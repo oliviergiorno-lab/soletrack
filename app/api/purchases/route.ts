@@ -12,10 +12,6 @@ export async function GET() {
 
   const purchases = await prisma.purchase.findMany({
     where: { userId: user.id },
-    include: {
-      marketPrices: { orderBy: { fetchedAt: 'desc' }, take: 1 },
-      alerts: { where: { seen: false } },
-    },
     orderBy: { purchasedAt: 'desc' },
   })
   return NextResponse.json(purchases)
