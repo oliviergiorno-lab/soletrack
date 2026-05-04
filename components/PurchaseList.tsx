@@ -152,57 +152,82 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
 
   const pnl = (p: Purchase) => p.sellPrice ? p.sellPrice - (p.sellFees || 0) - p.totalCost : null
 
-  const SellModal = () => sellModal ? (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-1">Enregistrer la vente</h2>
-        <p className="text-zinc-400 text-sm mb-6">{sellModal.brand} {sellModal.model} — {sellModal.colorway}</p>
-        <div className="flex flex-col gap-4">
-          {[
-            { label: 'Prix de vente (€)', key: 'sellPrice', type: 'number', placeholder: 'Optionnel' },
-            { label: 'Frais de vente (€)', key: 'sellFees', type: 'number', placeholder: 'Optionnel' },
-          ].map(f => (
-            <div key={f.key} className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-400 uppercase tracking-wider">{f.label}</label>
-              <input type={f.type} value={sellForm[f.key as keyof typeof sellForm] as string} onChange={e => setSellForm(prev => ({ ...prev, [f.key]: e.target.value }))} placeholder={f.placeholder} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500" />
-            </div>
-          ))}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-zinc-400 uppercase tracking-wider">Plateforme de vente</label>
-            <select value={sellForm.sellPlatform} onChange={e => setSellForm(prev => ({ ...prev, sellPlatform: e.target.value }))} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500">
-              {['StockX', 'GOAT', 'Vinted', 'eBay', 'Direct'].map(o => <option key={o}>{o}</option>)}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-zinc-400 uppercase tracking-wider">Date de vente</label>
-            <input type="date" value={sellForm.soldAt} onChange={e => setSellForm(prev => ({ ...prev, soldAt: e.target.value }))} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500" />
-          </div>
-        </div>
-        <div className="flex gap-3 justify-end mt-6">
-          <button onClick={() => setSellModal(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Annuler</button>
-          <button onClick={confirmSell} disabled={loading === sellModal.id} className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors">Confirmer la vente</button>
-        </div>
-      </div>
-    </div>
-  ) : null
-
-  const NotesModal = () => notesId ? (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
-        <h2 className="text-lg font-semibold mb-4">Notes</h2>
-        <textarea value={notesValue} onChange={e => setNotesValue(e.target.value)} placeholder="Prix observé, acheteur potentiel, timing de vente..." rows={6} className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500 resize-none" />
-        <div className="flex gap-3 justify-end mt-4">
-          <button onClick={() => setNotesId(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Annuler</button>
-          <button onClick={() => saveNotes(notesId)} disabled={loading === notesId} className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors">Sauvegarder</button>
-        </div>
-      </div>
-    </div>
-  ) : null
-
   return (
     <div>
-      <SellModal />
-      <NotesModal />
+      {/* Modale vente */}
+      {sellModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-1">Enregistrer la vente</h2>
+            <p className="text-zinc-400 text-sm mb-6">{sellModal.brand} {sellModal.model} — {sellModal.colorway}</p>
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-zinc-400 uppercase tracking-wider">Prix de vente (€)</label>
+                <input
+                  type="number"
+                  value={sellForm.sellPrice}
+                  onChange={e => setSellForm(prev => ({ ...prev, sellPrice: e.target.value }))}
+                  placeholder="Optionnel"
+                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-zinc-400 uppercase tracking-wider">Frais de vente (€)</label>
+                <input
+                  type="number"
+                  value={sellForm.sellFees}
+                  onChange={e => setSellForm(prev => ({ ...prev, sellFees: e.target.value }))}
+                  placeholder="Optionnel"
+                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-zinc-400 uppercase tracking-wider">Plateforme de vente</label>
+                <select
+                  value={sellForm.sellPlatform}
+                  onChange={e => setSellForm(prev => ({ ...prev, sellPlatform: e.target.value }))}
+                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
+                >
+                  {['StockX', 'GOAT', 'Vinted', 'eBay', 'Direct'].map(o => <option key={o}>{o}</option>)}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-zinc-400 uppercase tracking-wider">Date de vente</label>
+                <input
+                  type="date"
+                  value={sellForm.soldAt}
+                  onChange={e => setSellForm(prev => ({ ...prev, soldAt: e.target.value }))}
+                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 justify-end mt-6">
+              <button onClick={() => setSellModal(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Annuler</button>
+              <button onClick={confirmSell} disabled={loading === sellModal.id} className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors">Confirmer la vente</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modale notes */}
+      {notesId && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Notes</h2>
+            <textarea
+              value={notesValue}
+              onChange={e => setNotesValue(e.target.value)}
+              placeholder="Prix observé, acheteur potentiel, timing de vente..."
+              rows={6}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500 resize-none"
+            />
+            <div className="flex gap-3 justify-end mt-4">
+              <button onClick={() => setNotesId(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Annuler</button>
+              <button onClick={() => saveNotes(notesId)} disabled={loading === notesId} className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors">Sauvegarder</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filtres */}
       <div className="flex flex-wrap items-center gap-2 mb-4">

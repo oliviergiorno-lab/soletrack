@@ -131,7 +131,7 @@ export default function AddPurchaseForm() {
             )}
           </div>
           {selected && (
-            <div className="grid grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
               {[
                 { name: 'size', label: 'Pointure *', placeholder: 'EU 41' },
                 { name: 'orderNumber', label: 'N° Commande', placeholder: '03-XXXXXXXX' },
