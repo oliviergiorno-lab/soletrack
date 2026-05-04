@@ -7,6 +7,7 @@ import AlertBanner from '@/components/AlertBanner'
 import AddPurchaseForm from '@/components/AddPurchaseForm'
 import RefreshPrices from '@/components/RefreshPrices'
 import LogoutButton from '@/components/LogoutButton'
+import Dashboard from '@/components/Dashboard'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +49,7 @@ export default async function Home() {
           </div>
         </div>
         <AlertBanner alerts={alerts} />
+        <Dashboard purchases={purchases} />
         <AddPurchaseForm />
         <RefreshPrices />
         <PurchaseList purchases={purchases} />
