@@ -7,23 +7,27 @@ export async function PATCH(
 ) {
   const { id } = await params
   const body = await req.json()
-  const { status, sellPrice, sellFees, sellPlatform, soldAt } = body
+  const { status, sellPrice, sellFees, sellPlatform, soldAt, notes } = body
 
-  const data: any = { status }
+  const data: any = {}
 
-  if (status === 'SOLD') {
-    if (sellPrice !== undefined) data.sellPrice = sellPrice
-    if (sellFees !== undefined) data.sellFees = sellFees
-    if (sellPlatform !== undefined) data.sellPlatform = sellPlatform
-    if (soldAt !== undefined) data.soldAt = new Date(soldAt)
+  if (status !== undefined) {
+    data.status = status
+    if (status === 'SOLD') {
+      if (sellPrice !== undefined) data.sellPrice = sellPrice
+      if (sellFees !== undefined) data.sellFees = sellFees
+      if (sellPlatform !== undefined) data.sellPlatform = sellPlatform
+      if (soldAt !== undefined) data.soldAt = new Date(soldAt)
+    }
+    if (status === 'RETURNED' || status === 'IN_STOCK') {
+      data.sellPrice = null
+      data.sellFees = null
+      data.sellPlatform = null
+      data.soldAt = null
+    }
   }
 
-  if (status === 'RETURNED' || status === 'IN_STOCK') {
-    data.sellPrice = null
-    data.sellFees = null
-    data.sellPlatform = null
-    data.soldAt = null
-  }
+  if (notes !== undefined) data.notes = notes
 
   const purchase = await prisma.purchase.update({
     where: { id: parseInt(id) },
@@ -39,10 +43,6 @@ export async function GET(
   const { id } = await params
   const purchase = await prisma.purchase.findUnique({
     where: { id: parseInt(id) },
-    include: {
-      marketPrices: { orderBy: { fetchedAt: 'desc' } },
-      alerts: true,
-    },
   })
   if (!purchase) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json(purchase)
@@ -58,6 +58,7 @@ export async function DELETE(
   })
   return NextResponse.json({ success: true })
 }
+
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }

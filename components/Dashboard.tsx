@@ -2,11 +2,6 @@
 
 import { useMemo } from 'react'
 
-type MarketPrice = {
-  stockxPrice: number | null
-  goatPrice: number | null
-}
-
 type Purchase = {
   id: number
   brand: string
@@ -19,7 +14,6 @@ type Purchase = {
   status: string
   sellPrice: number | null
   sellFees: number | null
-  marketPrices: MarketPrice[]
 }
 
 export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
@@ -28,40 +22,29 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
     const sold = purchases.filter(p => p.status === 'SOLD')
 
     const capitalInvesti = inStock.reduce((s, p) => s + p.totalCost, 0)
-    const valeurMarche = inStock.reduce((s, p) => {
-      const latest = p.marketPrices[0]
-      const price = latest?.stockxPrice ?? latest?.goatPrice ?? 0
-      return s + price
-    }, 0)
+    const totalInvesti = purchases.reduce((s, p) => s + p.totalCost, 0)
     const pnlRealise = sold.reduce((s, p) => {
       if (!p.sellPrice) return s
       return s + (p.sellPrice - (p.sellFees || 0) - p.totalCost)
     }, 0)
 
-    // Répartition par plateforme
     const platformMap: Record<string, number> = {}
     purchases.forEach(p => {
       platformMap[p.platform] = (platformMap[p.platform] || 0) + 1
     })
 
-    // Top opportunités
-    const opportunities = inStock
-      .map(p => {
-        const latest = p.marketPrices[0]
-        const marketPrice = latest?.stockxPrice ?? latest?.goatPrice ?? null
-        if (!marketPrice) return null
-        const margin = marketPrice - p.totalCost
-        const marginPct = p.totalCost > 0 ? (margin / p.totalCost) * 100 : 0
-        return { ...p, marketPrice, margin, marginPct }
-      })
-      .filter(Boolean)
-      .sort((a, b) => b!.marginPct - a!.marginPct)
-      .slice(0, 3) as any[]
+    const topSold = sold
+      .filter(p => p.sellPrice)
+      .map(p => ({
+        ...p,
+        pnl: p.sellPrice! - (p.sellFees || 0) - p.totalCost,
+      }))
+      .sort((a, b) => b.pnl - a.pnl)
+      .slice(0, 3)
 
-    return { inStock, sold, capitalInvesti, valeurMarche, pnlRealise, platformMap, opportunities }
+    return { inStock, sold, capitalInvesti, totalInvesti, pnlRealise, platformMap, topSold }
   }, [purchases])
 
-  // Camembert SVG simple
   const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
   const platformEntries = Object.entries(stats.platformMap)
   const total = platformEntries.reduce((s, [, v]) => s + v, 0)
@@ -85,10 +68,10 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         {[
-          { label: 'Capital investi', value: `€${stats.capitalInvesti.toFixed(0)}`, sub: `${stats.inStock.length} paires en stock`, color: 'text-white' },
-          { label: 'Valeur marché', value: `€${stats.valeurMarche.toFixed(0)}`, sub: 'Prix StockX/GOAT actuel', color: 'text-blue-400' },
-          { label: 'Plus-value latente', value: `${stats.valeurMarche - stats.capitalInvesti >= 0 ? '+' : ''}€${(stats.valeurMarche - stats.capitalInvesti).toFixed(0)}`, sub: 'Si tout vendu maintenant', color: stats.valeurMarche >= stats.capitalInvesti ? 'text-green-400' : 'text-red-400' },
+          { label: 'Capital en stock', value: `€${stats.capitalInvesti.toFixed(0)}`, sub: `${stats.inStock.length} paires en stock`, color: 'text-white' },
+          { label: 'Total investi', value: `€${stats.totalInvesti.toFixed(0)}`, sub: 'Tous achats confondus', color: 'text-blue-400' },
           { label: 'P&L réalisé', value: `${stats.pnlRealise >= 0 ? '+' : ''}€${stats.pnlRealise.toFixed(0)}`, sub: `${stats.sold.length} paires vendues`, color: stats.pnlRealise >= 0 ? 'text-green-400' : 'text-red-400' },
+          { label: 'Paires totales', value: String(purchases.length), sub: `${stats.sold.length} vendues · ${stats.inStock.length} en stock`, color: 'text-white' },
         ].map((kpi, i) => (
           <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
             <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{kpi.label}</div>
@@ -101,7 +84,7 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
         {/* Camembert */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Répartition par plateforme</h3>
+          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Répartition par plateforme d'achat</h3>
           {total === 0 ? (
             <p className="text-zinc-500 text-sm">Aucune donnée</p>
           ) : (
@@ -132,22 +115,23 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
           )}
         </div>
 
-        {/* Top opportunités */}
+        {/* Top ventes */}
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">🔥 Top opportunités</h3>
-          {stats.opportunities.length === 0 ? (
-            <p className="text-zinc-500 text-sm">Aucune opportunité détectée — mettez à jour les prix</p>
+          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">🏆 Meilleures ventes</h3>
+          {stats.topSold.length === 0 ? (
+            <p className="text-zinc-500 text-sm">Aucune vente enregistrée</p>
           ) : (
             <div className="flex flex-col gap-3">
-              {stats.opportunities.map((p, i) => (
+              {stats.topSold.map((p, i) => (
                 <div key={p.id} className="flex items-center justify-between">
                   <div>
                     <div className="text-sm text-white font-medium">{p.brand} {p.model}</div>
                     <div className="text-xs text-zinc-500">{p.colorway}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-green-400 font-mono font-bold">+€{p.margin.toFixed(0)}</div>
-                    <div className="text-xs text-zinc-500">+{p.marginPct.toFixed(0)}%</div>
+                    <div className={`font-mono font-bold ${p.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {p.pnl >= 0 ? '+' : ''}€{p.pnl.toFixed(0)}
+                    </div>
                   </div>
                 </div>
               ))}

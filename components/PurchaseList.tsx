@@ -1,19 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-
-type MarketPrice = {
-  stockxPrice: number | null
-  goatPrice: number | null
-  fetchedAt: string
-}
-
-type Alert = {
-  id: number
-  marketPrice: number
-}
 
 type Purchase = {
   id: number
@@ -32,9 +21,8 @@ type Purchase = {
   sellFees: number | null
   sellPlatform: string | null
   soldAt: string | null
+  notes: string | null
   purchasedAt: string
-  marketPrices: MarketPrice[]
-  alerts: Alert[]
 }
 
 export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
@@ -43,6 +31,9 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
   const [editId, setEditId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ size: '', buyPrice: '', fees: '' })
   const [filter, setFilter] = useState<string>('ALL')
+  const [filterBrand, setFilterBrand] = useState<string>('ALL')
+  const [filterSize, setFilterSize] = useState<string>('ALL')
+  const [sortPrice, setSortPrice] = useState<string>('NONE')
   const [sellModal, setSellModal] = useState<Purchase | null>(null)
   const [sellForm, setSellForm] = useState({
     sellPrice: '',
@@ -50,8 +41,21 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
     sellPlatform: 'StockX',
     soldAt: new Date().toISOString().split('T')[0],
   })
+  const [notesId, setNotesId] = useState<number | null>(null)
+  const [notesValue, setNotesValue] = useState('')
 
-  const filtered = filter === 'ALL' ? purchases : purchases.filter(p => p.status === filter)
+  // Listes uniques pour les filtres
+  const brands = useMemo(() => ['ALL', ...Array.from(new Set(purchases.map(p => p.brand))).sort()], [purchases])
+  const sizes = useMemo(() => ['ALL', ...Array.from(new Set(purchases.map(p => p.size))).sort()], [purchases])
+
+  const filtered = useMemo(() => {
+    let result = filter === 'ALL' ? purchases : purchases.filter(p => p.status === filter)
+    if (filterBrand !== 'ALL') result = result.filter(p => p.brand === filterBrand)
+    if (filterSize !== 'ALL') result = result.filter(p => p.size === filterSize)
+    if (sortPrice === 'ASC') result = [...result].sort((a, b) => a.totalCost - b.totalCost)
+    if (sortPrice === 'DESC') result = [...result].sort((a, b) => b.totalCost - a.totalCost)
+    return result
+  }, [purchases, filter, filterBrand, filterSize, sortPrice])
 
   async function updateStatus(id: number, status: string, purchase: Purchase) {
     if (purchase.status === 'SOLD' && status === 'IN_STOCK') return
@@ -123,6 +127,23 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
     router.refresh()
   }
 
+  function openNotes(p: Purchase) {
+    setNotesId(p.id)
+    setNotesValue(p.notes || '')
+  }
+
+  async function saveNotes(id: number) {
+    setLoading(id)
+    await fetch(`/api/purchases/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ notes: notesValue }),
+      headers: { 'Content-Type': 'application/json' },
+    })
+    setNotesId(null)
+    setLoading(null)
+    router.refresh()
+  }
+
   const counts = {
     ALL: purchases.length,
     IN_STOCK: purchases.filter(p => p.status === 'IN_STOCK').length,
@@ -141,31 +162,15 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-zinc-400 uppercase tracking-wider">Prix de vente (€)</label>
-                <input
-                  type="number"
-                  value={sellForm.sellPrice}
-                  onChange={e => setSellForm(prev => ({ ...prev, sellPrice: e.target.value }))}
-                  placeholder="Optionnel"
-                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
-                />
+                <input type="number" value={sellForm.sellPrice} onChange={e => setSellForm(prev => ({ ...prev, sellPrice: e.target.value }))} placeholder="Optionnel" className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-zinc-400 uppercase tracking-wider">Frais de vente (€)</label>
-                <input
-                  type="number"
-                  value={sellForm.sellFees}
-                  onChange={e => setSellForm(prev => ({ ...prev, sellFees: e.target.value }))}
-                  placeholder="Optionnel"
-                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
-                />
+                <input type="number" value={sellForm.sellFees} onChange={e => setSellForm(prev => ({ ...prev, sellFees: e.target.value }))} placeholder="Optionnel" className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500" />
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-zinc-400 uppercase tracking-wider">Plateforme de vente</label>
-                <select
-                  value={sellForm.sellPlatform}
-                  onChange={e => setSellForm(prev => ({ ...prev, sellPlatform: e.target.value }))}
-                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
-                >
+                <select value={sellForm.sellPlatform} onChange={e => setSellForm(prev => ({ ...prev, sellPlatform: e.target.value }))} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500">
                   <option>StockX</option>
                   <option>GOAT</option>
                   <option>Vinted</option>
@@ -175,69 +180,77 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
               </div>
               <div className="flex flex-col gap-1">
                 <label className="text-xs text-zinc-400 uppercase tracking-wider">Date de vente</label>
-                <input
-                  type="date"
-                  value={sellForm.soldAt}
-                  onChange={e => setSellForm(prev => ({ ...prev, soldAt: e.target.value }))}
-                  className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
-                />
+                <input type="date" value={sellForm.soldAt} onChange={e => setSellForm(prev => ({ ...prev, soldAt: e.target.value }))} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500" />
               </div>
             </div>
             <div className="flex gap-3 justify-end mt-6">
-              <button
-                onClick={() => setSellModal(null)}
-                className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Annuler
-              </button>
-              <button
-                onClick={confirmSell}
-                disabled={loading === sellModal.id}
-                className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors"
-              >
-                Confirmer la vente
-              </button>
+              <button onClick={() => setSellModal(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Annuler</button>
+              <button onClick={confirmSell} disabled={loading === sellModal.id} className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors">Confirmer la vente</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Filtre */}
-      <div className="flex items-center gap-4 mb-4">
-        <select
-          value={filter}
-          onChange={e => setFilter(e.target.value)}
-          className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none cursor-pointer"
-        >
+      {/* Modale de notes */}
+      {notesId && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6 w-full max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Notes</h2>
+            <textarea
+              value={notesValue}
+              onChange={e => setNotesValue(e.target.value)}
+              placeholder="Ajoute tes notes ici — prix observé, acheteur potentiel, timing de vente..."
+              rows={6}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500 resize-none"
+            />
+            <div className="flex gap-3 justify-end mt-4">
+              <button onClick={() => setNotesId(null)} className="px-4 py-2 text-sm text-zinc-400 hover:text-white transition-colors">Annuler</button>
+              <button onClick={() => saveNotes(notesId)} disabled={loading === notesId} className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors">Sauvegarder</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filtres */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
+        <select value={filter} onChange={e => setFilter(e.target.value)} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none cursor-pointer">
           <option value="ALL">Toutes ({counts.ALL})</option>
           <option value="IN_STOCK">En stock ({counts.IN_STOCK})</option>
           <option value="SOLD">Vendues ({counts.SOLD})</option>
           <option value="RETURNED">Retournées ({counts.RETURNED})</option>
         </select>
+        <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none cursor-pointer">
+          {brands.map(b => <option key={b} value={b}>{b === 'ALL' ? 'Toutes marques' : b}</option>)}
+        </select>
+        <select value={filterSize} onChange={e => setFilterSize(e.target.value)} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none cursor-pointer">
+          {sizes.map(s => <option key={s} value={s}>{s === 'ALL' ? 'Toutes tailles' : s}</option>)}
+        </select>
+        <select value={sortPrice} onChange={e => setSortPrice(e.target.value)} className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-300 outline-none cursor-pointer">
+          <option value="NONE">Prix : défaut</option>
+          <option value="ASC">Prix : croissant</option>
+          <option value="DESC">Prix : décroissant</option>
+        </select>
+        {(filterBrand !== 'ALL' || filterSize !== 'ALL' || sortPrice !== 'NONE') && (
+          <button onClick={() => { setFilterBrand('ALL'); setFilterSize('ALL'); setSortPrice('NONE') }} className="text-xs text-zinc-500 hover:text-white transition-colors">
+            Réinitialiser
+          </button>
+        )}
       </div>
 
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         {filtered.length === 0 ? (
-          <div className="text-center py-24 text-zinc-500">
-            Aucune paire dans cette catégorie
-          </div>
+          <div className="text-center py-24 text-zinc-500">Aucune paire dans cette catégorie</div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-800">
-                {['Sneaker', '', 'Taille', 'Fournisseur', 'Prix revient', 'StockX', 'GOAT', 'Revente', 'P&L', 'Statut', ''].map((h, i) => (
-                  <th key={i} className="px-4 py-3 text-left text-xs text-zinc-500 uppercase tracking-wider font-medium whitespace-nowrap">
-                    {h}
-                  </th>
+                {['Sneaker', '', 'Taille', 'Fournisseur', 'Prix revient', 'Vente', 'P&L', 'Statut', ''].map((h, i) => (
+                  <th key={i} className="px-4 py-3 text-left text-xs text-zinc-500 uppercase tracking-wider font-medium whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map(p => {
-                const latest = p.marketPrices[0]
-                const marketPrice = latest?.stockxPrice ?? latest?.goatPrice ?? null
-                const hasAlert = p.alerts.length > 0
-                const margin = marketPrice ? marketPrice - p.totalCost : null
                 const isEditing = editId === p.id
                 const pnl = p.sellPrice ? p.sellPrice - (p.sellFees || 0) - p.totalCost : null
 
@@ -247,6 +260,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                       <td className="px-4 py-4">
                         <div className="font-semibold text-white">{p.brand} {p.model}</div>
                         <div className="text-xs text-zinc-500 mt-0.5">{p.colorway}{p.orderNumber ? ` · ${p.orderNumber}` : ''}</div>
+                        {p.notes && <div className="text-xs text-zinc-400 mt-1 italic truncate max-w-xs">📝 {p.notes}</div>}
                       </td>
                       <td className="px-2 py-4">
                         {p.thumbnail ? (
@@ -258,34 +272,14 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                       <td className="px-4 py-4 text-zinc-300 whitespace-nowrap">{p.size}</td>
                       <td className="px-4 py-4 text-zinc-300 whitespace-nowrap">{p.platform}</td>
                       <td className="px-4 py-4 font-mono text-zinc-300 whitespace-nowrap">€{p.totalCost.toFixed(2)}</td>
-                      <td className="px-4 py-4 font-mono text-zinc-300 whitespace-nowrap">
-                        {latest?.stockxPrice ? `€${latest.stockxPrice}` : '—'}
-                      </td>
-                      <td className="px-4 py-4 font-mono text-zinc-300 whitespace-nowrap">
-                        {latest?.goatPrice ? `€${latest.goatPrice.toFixed(2)}` : '—'}
-                      </td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         {p.status === 'SOLD' && p.sellPrice ? (
                           <span className="text-zinc-300 font-mono text-xs">
                             €{p.sellPrice.toFixed(0)}{p.sellFees ? ` (-€${p.sellFees})` : ''}
                             {p.sellPlatform ? ` · ${p.sellPlatform}` : ''}
                           </span>
-                        ) : p.status !== 'IN_STOCK' ? (
-                          <span className="text-zinc-500 text-sm">—</span>
-                        ) : marketPrice === null ? (
-                          <span className="text-zinc-500 text-sm">En attente</span>
-                        ) : hasAlert ? (
-                          <span className="bg-green-950 text-green-400 border border-green-700 px-2 py-1 rounded text-xs font-medium">
-                            🟢 VENDRE +€{margin?.toFixed(0)}
-                          </span>
-                        ) : margin !== null && margin > 0 ? (
-                          <span className="bg-yellow-950 text-yellow-400 border border-yellow-700 px-2 py-1 rounded text-xs font-medium">
-                            🟡 +€{margin.toFixed(0)}
-                          </span>
                         ) : (
-                          <span className="bg-red-950 text-red-400 border border-red-700 px-2 py-1 rounded text-xs font-medium">
-                            🔴 -{Math.abs(margin ?? 0).toFixed(0)}€
-                          </span>
+                          <span className="text-zinc-500 text-sm">—</span>
                         )}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap font-mono">
@@ -304,74 +298,39 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                           onChange={e => updateStatus(p.id, e.target.value, p)}
                           className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 outline-none cursor-pointer"
                         >
-                          <option value="IN_STOCK" style={p.status === 'SOLD' ? {display: 'none'} : {}}>En stock</option>
+                          <option value="IN_STOCK" style={p.status === 'SOLD' ? { display: 'none' } : {}}>En stock</option>
                           <option value="SOLD">Vendu</option>
                           <option value="RETURNED">Retourné</option>
                         </select>
                       </td>
                       <td className="px-4 py-4">
                         <div className="flex gap-2 items-center">
+                          <button onClick={() => openNotes(p)} className="text-zinc-400 hover:text-white text-xs transition-colors" title="Notes">📝</button>
                           {p.status === 'IN_STOCK' && (
-                            <button
-                              onClick={() => openEdit(p)}
-                              className="text-zinc-400 hover:text-white text-xs transition-colors whitespace-nowrap"
-                            >
-                              Modifier
-                            </button>
+                            <button onClick={() => openEdit(p)} className="text-zinc-400 hover:text-white text-xs transition-colors whitespace-nowrap">Modifier</button>
                           )}
-                          <button
-                            onClick={() => deleteItem(p.id)}
-                            disabled={loading === p.id}
-                            className="text-zinc-600 hover:text-red-400 transition-colors text-sm disabled:opacity-50"
-                          >
-                            ✕
-                          </button>
+                          <button onClick={() => deleteItem(p.id)} disabled={loading === p.id} className="text-zinc-600 hover:text-red-400 transition-colors text-sm disabled:opacity-50">✕</button>
                         </div>
                       </td>
                     </tr>
                     {isEditing && (
                       <tr className="border-b border-zinc-800 bg-zinc-800/50">
-                        <td colSpan={11} className="px-4 py-4">
+                        <td colSpan={9} className="px-4 py-4">
                           <div className="flex gap-4 items-end">
                             <div className="flex flex-col gap-1">
                               <label className="text-xs text-zinc-400 uppercase tracking-wider">Taille</label>
-                              <input
-                                value={editForm.size}
-                                onChange={e => setEditForm(prev => ({ ...prev, size: e.target.value }))}
-                                className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none w-24"
-                              />
+                              <input value={editForm.size} onChange={e => setEditForm(prev => ({ ...prev, size: e.target.value }))} className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none w-24" />
                             </div>
                             <div className="flex flex-col gap-1">
                               <label className="text-xs text-zinc-400 uppercase tracking-wider">Prix achat (€)</label>
-                              <input
-                                type="number"
-                                value={editForm.buyPrice}
-                                onChange={e => setEditForm(prev => ({ ...prev, buyPrice: e.target.value }))}
-                                className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none w-28"
-                              />
+                              <input type="number" value={editForm.buyPrice} onChange={e => setEditForm(prev => ({ ...prev, buyPrice: e.target.value }))} className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none w-28" />
                             </div>
                             <div className="flex flex-col gap-1">
                               <label className="text-xs text-zinc-400 uppercase tracking-wider">Frais (€)</label>
-                              <input
-                                type="number"
-                                value={editForm.fees}
-                                onChange={e => setEditForm(prev => ({ ...prev, fees: e.target.value }))}
-                                className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none w-28"
-                              />
+                              <input type="number" value={editForm.fees} onChange={e => setEditForm(prev => ({ ...prev, fees: e.target.value }))} className="bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none w-28" />
                             </div>
-                            <button
-                              onClick={() => saveEdit(p.id)}
-                              disabled={loading === p.id}
-                              className="bg-green-500 hover:bg-green-400 text-black font-bold px-4 py-2 rounded text-sm transition-colors disabled:opacity-50"
-                            >
-                              Sauvegarder
-                            </button>
-                            <button
-                              onClick={() => setEditId(null)}
-                              className="text-zinc-400 hover:text-white text-sm transition-colors"
-                            >
-                              Annuler
-                            </button>
+                            <button onClick={() => saveEdit(p.id)} disabled={loading === p.id} className="bg-green-500 hover:bg-green-400 text-black font-bold px-4 py-2 rounded text-sm transition-colors disabled:opacity-50">Sauvegarder</button>
+                            <button onClick={() => setEditId(null)} className="text-zinc-400 hover:text-white text-sm transition-colors">Annuler</button>
                           </div>
                         </td>
                       </tr>

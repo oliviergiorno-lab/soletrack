@@ -3,11 +3,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import PurchaseList from '@/components/PurchaseList'
-import AlertBanner from '@/components/AlertBanner'
 import AddPurchaseForm from '@/components/AddPurchaseForm'
-import RefreshPrices from '@/components/RefreshPrices'
-import LogoutButton from '@/components/LogoutButton'
 import Dashboard from '@/components/Dashboard'
+import LogoutButton from '@/components/LogoutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,20 +18,7 @@ export default async function Home() {
 
   const purchases = await prisma.purchase.findMany({
     where: { userId: user.id },
-    include: {
-      marketPrices: { orderBy: { fetchedAt: 'desc' }, take: 1 },
-      alerts: { where: { seen: false } },
-    },
     orderBy: { purchasedAt: 'desc' },
-  })
-
-  const alerts = await prisma.alert.findMany({
-    where: {
-      seen: false,
-      purchase: { userId: user.id },
-    },
-    include: { purchase: true },
-    orderBy: { triggeredAt: 'desc' },
   })
 
   return (
@@ -48,10 +33,8 @@ export default async function Home() {
             <LogoutButton />
           </div>
         </div>
-        <AlertBanner alerts={alerts} />
         <Dashboard purchases={purchases} />
         <AddPurchaseForm />
-        <RefreshPrices />
         <PurchaseList purchases={purchases} />
       </div>
     </main>
