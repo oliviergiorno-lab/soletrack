@@ -77,15 +77,6 @@ export default function AddPurchaseForm() {
       }),
       headers: { 'Content-Type': 'application/json' },
     })
-
-    // Mise à jour automatique des prix après ajout
-    await fetch('/api/market', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.NEXT_PUBLIC_CRON_SECRET}`,
-      },
-    })
-
     setLoading(false)
     setOpen(false)
     setSelected(null)
@@ -106,8 +97,6 @@ export default function AddPurchaseForm() {
       ) : (
         <div className="bg-zinc-900 border border-zinc-700 rounded-xl p-6">
           <h2 className="text-lg font-semibold mb-4">Nouvel achat</h2>
-
-          {/* Recherche sneaker */}
           <div className="mb-4 relative">
             <label className="text-xs text-zinc-400 uppercase tracking-wider block mb-1">
               Rechercher la sneaker <span className="text-red-500">*</span>
@@ -141,8 +130,6 @@ export default function AddPurchaseForm() {
               </div>
             )}
           </div>
-
-          {/* Champs restants */}
           {selected && (
             <div className="grid grid-cols-3 gap-4 mb-4">
               {[
@@ -183,7 +170,6 @@ export default function AddPurchaseForm() {
               </div>
             </div>
           )}
-
           <div className="flex gap-3 justify-end">
             <button
               onClick={() => { setOpen(false); setSelected(null); setQuery('') }}
