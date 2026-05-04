@@ -16,10 +16,16 @@ export default async function Home() {
   const user = await prisma.user.findUnique({ where: { email: session.user?.email! } })
   if (!user) redirect('/login')
 
-  const purchases = await prisma.purchase.findMany({
+  const rawPurchases = await prisma.purchase.findMany({
     where: { userId: user.id },
     orderBy: { purchasedAt: 'desc' },
   })
+
+  const purchases = rawPurchases.map(p => ({
+    ...p,
+    soldAt: p.soldAt?.toISOString() ?? null,
+    purchasedAt: p.purchasedAt.toISOString(),
+  }))
 
   return (
     <main className="min-h-screen bg-zinc-950 text-white p-8">

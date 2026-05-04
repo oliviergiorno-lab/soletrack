@@ -20,7 +20,7 @@ export default function AddPurchaseForm() {
   const [results, setResults] = useState<Product[]>([])
   const [selected, setSelected] = useState<Product | null>(null)
   const [searching, setSearching] = useState(false)
-  const debounceRef = useRef<NodeJS.Timeout>()
+  const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const [form, setForm] = useState({
     size: '',

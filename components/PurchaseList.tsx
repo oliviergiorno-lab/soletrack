@@ -225,7 +225,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
         <div className="text-center py-24 text-zinc-500">Aucune paire dans cette catégorie</div>
       ) : (
         <>
-          {/* VUE MOBILE : cartes */}
+          {/* VUE MOBILE */}
           <div className="flex flex-col gap-3 md:hidden">
             {filtered.map(p => {
               const profit = pnl(p)
@@ -257,12 +257,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                     </div>
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-zinc-800">
-                    <select
-                      disabled={loading === p.id}
-                      value={p.status}
-                      onChange={e => updateStatus(p.id, e.target.value, p)}
-                      className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 outline-none"
-                    >
+                    <select disabled={loading === p.id} value={p.status} onChange={e => updateStatus(p.id, e.target.value, p)} className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 outline-none">
                       <option value="IN_STOCK" style={p.status === 'SOLD' ? { display: 'none' } : {}}>En stock</option>
                       <option value="SOLD">Vendu</option>
                       <option value="RETURNED">Retourné</option>
@@ -278,13 +273,13 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                   {editId === p.id && (
                     <div className="mt-3 pt-3 border-t border-zinc-800 flex flex-col gap-3">
                       {[
-                        { label: 'Taille', key: 'size', type: 'text', w: 'w-full' },
-                        { label: 'Prix achat (€)', key: 'buyPrice', type: 'number', w: 'w-full' },
-                        { label: 'Frais (€)', key: 'fees', type: 'number', w: 'w-full' },
+                        { label: 'Taille', key: 'size', type: 'text' },
+                        { label: 'Prix achat (€)', key: 'buyPrice', type: 'number' },
+                        { label: 'Frais (€)', key: 'fees', type: 'number' },
                       ].map(f => (
                         <div key={f.key} className="flex flex-col gap-1">
                           <label className="text-xs text-zinc-400 uppercase tracking-wider">{f.label}</label>
-                          <input type={f.type} value={editForm[f.key as keyof typeof editForm]} onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))} className={`${f.w} bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none`} />
+                          <input type={f.type} value={editForm[f.key as keyof typeof editForm]} onChange={e => setEditForm(prev => ({ ...prev, [f.key]: e.target.value }))} className="w-full bg-zinc-700 border border-zinc-600 rounded px-3 py-2 text-sm text-white outline-none" />
                         </div>
                       ))}
                       <div className="flex gap-2">
@@ -298,7 +293,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
             })}
           </div>
 
-          {/* VUE DESKTOP : tableau */}
+          {/* VUE DESKTOP */}
           <div className="hidden md:block bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
             <table className="w-full">
               <thead>
@@ -349,7 +344,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                         </td>
                         <td className="px-4 py-4">
                           <div className="flex gap-2 items-center">
-                            <button onClick={() => openNotes(p)} className="text-zinc-400 hover:text-white text-xs transition-colors" title="Notes">📝</button>
+                            <button onClick={() => openNotes(p)} className="text-zinc-400 hover:text-white text-xs transition-colors">📝</button>
                             {p.status === 'IN_STOCK' && (
                               <button onClick={() => openEdit(p)} className="text-zinc-400 hover:text-white text-xs transition-colors whitespace-nowrap">Modifier</button>
                             )}
