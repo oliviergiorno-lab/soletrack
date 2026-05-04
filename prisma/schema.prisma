@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  username      String   @unique
+  email         String   @unique
+  password      String
+  alertsEnabled Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  purchases Purchase[]
+}
+
+model Purchase {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  brand        String
+  model        String
+  colorway     String
+  size         String
+  sku          String?
+  thumbnail    String?
+  orderNumber  String?
+  platform     String
+  buyPrice     Float
+  fees         Float    @default(0)
+  totalCost    Float
+  status       String   @default("IN_STOCK")
+  sellPrice    Float?
+  sellFees     Float?
+  sellPlatform String?
+  soldAt       DateTime?
+  purchasedAt  DateTime @default(now())
+
+  user         User     @relation(fields: [userId], references: [id])
+  marketPrices MarketPrice[]
+  alerts       Alert[]
+}
+
+model MarketPrice {
+  id          Int      @id @default(autoincrement())
+  purchaseId  Int
+  stockxPrice Float?
+  goatPrice   Float?
+  fetchedAt   DateTime @default(now())
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+}
+
+model Alert {
+  id          Int      @id @default(autoincrement())
+  purchaseId  Int
+  marketPrice Float
+  triggeredAt DateTime @default(now())
+  seen        Boolean  @default(false)
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+}
