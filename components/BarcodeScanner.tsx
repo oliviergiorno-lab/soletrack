@@ -15,7 +15,7 @@ export default function BarcodeScanner({ onResult }: { onResult: (result: string
         const Quagga = (await import('@ericblade/quagga2')).default
         quagga = Quagga
 
-        await Quagga.init({
+        const config: any = {
           inputStream: {
             type: 'LiveStream',
             target: scannerRef.current!,
@@ -29,7 +29,9 @@ export default function BarcodeScanner({ onResult }: { onResult: (result: string
             readers: ['ean_13_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'],
           },
           locate: true,
-        }, (err: any) => {
+        }
+
+        await Quagga.init(config, (err: any) => {
           if (err) {
             setError('Impossible d\'accéder à la caméra')
             return
