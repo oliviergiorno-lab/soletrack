@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import Splash from "@/components/brand/Splash";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -11,6 +12,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "SoleTrack",
   description: "Le pilotage de ton business sneakers : achat, stock, revente.",
+  appleWebApp: { capable: true, title: "SoleTrack", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1F2021",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -20,7 +29,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-bg text-ink">{children}</body>
+      <body className="min-h-full flex flex-col bg-bg text-ink">
+        <Splash />
+        {children}
+      </body>
     </html>
   );
 }

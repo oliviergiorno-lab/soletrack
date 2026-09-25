@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import SoleTrackMark from '@/components/brand/SoleTrackMark'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -40,8 +41,11 @@ export default function LoginPage() {
     <main className="min-h-screen bg-bg flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="text-2xl font-bold tracking-tight text-ink">
-            SOLE<span className="text-muted">TRACK</span>
+          <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-[18px] bg-[#1F2021] shadow-card">
+            <SoleTrackMark size={44} tone="dark" />
+          </div>
+          <div className="text-2xl font-extrabold tracking-tight text-ink">
+            SOLE<span className="text-[#849681]">TRACK</span>
           </div>
           <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">
             Achat · Stock · Revente
