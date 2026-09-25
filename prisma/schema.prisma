@@ -1,5 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -19,26 +19,28 @@ model User {
 }
 
 model Purchase {
-  id           Int       @id @default(autoincrement())
-  userId       Int
-  brand        String
-  model        String
-  colorway     String
-  size         String
-  sku          String?
-  thumbnail    String?
-  orderNumber  String?
-  platform     String
-  buyPrice     Float
-  fees         Float     @default(0)
-  totalCost    Float
-  status       String    @default("IN_STOCK")
-  sellPrice    Float?
-  sellFees     Float?
-  sellPlatform String?
-  soldAt       DateTime?
-  notes        String?
-  purchasedAt  DateTime  @default(now())
+  id              Int       @id @default(autoincrement())
+  userId          Int
+  brand           String
+  model           String
+  colorway        String
+  size            String
+  sku             String?
+  thumbnail       String?
+  orderNumber     String?
+  platform        String
+  buyPrice        Float
+  fees            Float     @default(0)
+  totalCost       Float
+  status          String    @default("IN_STOCK")
+  sellPrice       Float?
+  sellFees        Float?
+  sellPlatform    String?
+  soldAt          DateTime?
+  notes           String?
+  marketPrice     Float?
+  marketUpdatedAt DateTime?
+  purchasedAt     DateTime  @default(now())
 
   user User @relation(fields: [userId], references: [id])
 }
