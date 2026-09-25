@@ -2,10 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
+import Sidebar from '@/components/Sidebar'
 import PurchaseList from '@/components/PurchaseList'
 import AddPurchaseForm from '@/components/AddPurchaseForm'
 import Dashboard from '@/components/Dashboard'
-import LogoutButton from '@/components/LogoutButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -27,22 +27,30 @@ export default async function Home() {
     purchasedAt: p.purchasedAt.toISOString(),
   }))
 
+  const inStock = purchases.filter(p => p.status === 'IN_STOCK').length
+  const period = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(new Date())
+
   return (
-    <main className="min-h-screen bg-zinc-950 text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">
-            SOLE<span className="text-green-400">TRACK</span>
-          </h1>
-          <div className="flex items-center gap-4">
-            <span className="text-zinc-500 text-sm">👋 {user.username}</span>
-            <LogoutButton />
+    <div className="min-h-screen bg-bg md:grid md:grid-cols-[212px_1fr]">
+      <Sidebar username={user.username} />
+
+      <main className="min-w-0 px-4 py-5 md:px-7 md:py-6 lg:px-8">
+        <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight text-ink">Dashboard</h1>
+            <p className="text-[13px] text-muted">
+              Vue d'ensemble de ton activité · {inStock} {inStock > 1 ? 'paires' : 'paire'} en stock
+            </p>
           </div>
-        </div>
-        <Dashboard purchases={purchases} />
-        <AddPurchaseForm />
-        <PurchaseList purchases={purchases} />
-      </div>
-    </main>
+          <div className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted capitalize">
+            {period}
+          </div>
+        </header>
+
+        <section id="dashboard"><Dashboard purchases={purchases} /></section>
+        <section id="achats"><AddPurchaseForm /></section>
+        <section id="stock"><PurchaseList purchases={purchases} /></section>
+      </main>
+    </div>
   )
 }
