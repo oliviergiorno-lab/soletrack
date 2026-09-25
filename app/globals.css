@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --st-bg: #F7F5F0;
+  --st-surface: #FCFBF8;
+  --st-text: #252525;
+  --st-muted: #77746F;
+  --st-accent: #7F927D;
+  --st-accent-ink: #536551;
+  --st-accent-soft: #E4EAE1;
+  --st-border: #E5E1DA;
+  --st-neg: #B4544A;
+  --st-side: #1C1C1E;
+
+  --st-radius: 16px;
+  --st-shadow: 0 8px 30px rgba(30, 30, 30, 0.05);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--st-bg);
+  --color-surface: var(--st-surface);
+  --color-ink: var(--st-text);
+  --color-muted: var(--st-muted);
+  --color-accent: var(--st-accent);
+  --color-accent-ink: var(--st-accent-ink);
+  --color-accent-soft: var(--st-accent-soft);
+  --color-line: var(--st-border);
+  --color-neg: var(--st-neg);
+  --color-side: var(--st-side);
+
+  --radius-card: var(--st-radius);
+  --shadow-card: var(--st-shadow);
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--st-bg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--st-bg);
+  color: var(--st-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
