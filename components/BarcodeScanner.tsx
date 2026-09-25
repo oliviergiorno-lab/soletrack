@@ -19,7 +19,7 @@ export default function BarcodeScanner({ onResult }: Props) {
     try {
       const { readBarcodes } = await import('zxing-wasm/reader')
       const results = await readBarcodes(file, {
-        formats: ['EAN-13', 'UPC-A', 'UPC-E', 'EAN-8', 'Code128', 'QRCode'],
+        formats: ['EAN-13', 'UPC-A', 'UPC-E', 'EAN-8'],
         tryHarder: true,
         maxNumberOfSymbols: 1,
       })
