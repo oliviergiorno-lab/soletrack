@@ -6,6 +6,7 @@ import Sidebar from '@/components/Sidebar'
 import PurchaseList from '@/components/PurchaseList'
 import AddPurchaseForm from '@/components/AddPurchaseForm'
 import Dashboard from '@/components/Dashboard'
+import RefreshPrices from '@/components/RefreshPrices'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,10 +26,16 @@ export default async function Home() {
     ...p,
     soldAt: p.soldAt?.toISOString() ?? null,
     purchasedAt: p.purchasedAt.toISOString(),
+    marketUpdatedAt: p.marketUpdatedAt?.toISOString() ?? null,
   }))
 
   const inStock = purchases.filter(p => p.status === 'IN_STOCK').length
   const period = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(new Date())
+  const lastUpdated = purchases
+    .map(p => p.marketUpdatedAt)
+    .filter((d): d is string => !!d)
+    .sort()
+    .at(-1) ?? null
 
   return (
     <div className="min-h-screen bg-bg md:grid md:grid-cols-[212px_1fr]">
@@ -42,8 +49,11 @@ export default async function Home() {
               Vue d'ensemble de ton activité · {inStock} {inStock > 1 ? 'paires' : 'paire'} en stock
             </p>
           </div>
-          <div className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted capitalize">
-            {period}
+          <div className="flex flex-wrap items-center gap-2">
+            <RefreshPrices lastUpdated={lastUpdated} />
+            <div className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted capitalize">
+              {period}
+            </div>
           </div>
         </header>
 
