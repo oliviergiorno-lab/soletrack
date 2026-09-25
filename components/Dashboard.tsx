@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
+import PortfolioChart, { type Point } from './PortfolioChart'
 
 type Purchase = {
   id: number
@@ -14,6 +15,16 @@ type Purchase = {
   status: string
   sellPrice: number | null
   sellFees: number | null
+  purchasedAt: string
+}
+
+const COLORS = ['#252525', '#7F927D', '#C8C0B2', '#8F8A81', '#B9C9B7', '#DCD6CB']
+
+function eur(n: number) {
+  return '€' + Math.round(n).toLocaleString('fr-FR')
+}
+function signed(n: number) {
+  return (n >= 0 ? '+' : '−') + eur(Math.abs(n))
 }
 
 export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
@@ -22,7 +33,6 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
     const sold = purchases.filter(p => p.status === 'SOLD')
 
     const capitalInvesti = inStock.reduce((s, p) => s + p.totalCost, 0)
-    const totalInvesti = purchases.reduce((s, p) => s + p.totalCost, 0)
     const pnlRealise = sold.reduce((s, p) => {
       if (!p.sellPrice) return s
       return s + (p.sellPrice - (p.sellFees || 0) - p.totalCost)
@@ -32,109 +42,86 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
     purchases.forEach(p => {
       platformMap[p.platform] = (platformMap[p.platform] || 0) + 1
     })
+    const platforms = Object.entries(platformMap)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count], i) => ({ name, count, color: COLORS[i % COLORS.length] }))
+    const total = purchases.length
 
-    const topSold = sold
-      .filter(p => p.sellPrice)
-      .map(p => ({
-        ...p,
-        pnl: p.sellPrice! - (p.sellFees || 0) - p.totalCost,
-      }))
-      .sort((a, b) => b.pnl - a.pnl)
-      .slice(0, 3)
+    // Capital investi cumulé dans le temps (bascule sur la valeur de marché quand la cote sera branchée)
+    const sorted = [...purchases].sort(
+      (a, b) => new Date(a.purchasedAt).getTime() - new Date(b.purchasedAt).getTime()
+    )
+    let cum = 0
+    const points: Point[] = sorted.map(p => {
+      cum += p.totalCost
+      return { date: p.purchasedAt, value: cum }
+    })
+    if (points.length) points.push({ date: new Date().toISOString(), value: cum })
 
-    return { inStock, sold, capitalInvesti, totalInvesti, pnlRealise, platformMap, topSold }
+    return { inStock, sold, capitalInvesti, pnlRealise, platforms, total, points }
   }, [purchases])
 
-  const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
-  const platformEntries = Object.entries(stats.platformMap)
-  const total = platformEntries.reduce((s, [, v]) => s + v, 0)
+  let acc = 0
+  const gradient = stats.platforms
+    .map(p => {
+      const from = (acc / stats.total) * 100
+      acc += p.count
+      const to = (acc / stats.total) * 100
+      return `${p.color} ${from}% ${to}%`
+    })
+    .join(', ')
 
-  let cumulAngle = 0
-  const slices = platformEntries.map(([name, count], i) => {
-    const pct = count / total
-    const startAngle = cumulAngle
-    cumulAngle += pct * 2 * Math.PI
-    const endAngle = cumulAngle
-    const x1 = 50 + 40 * Math.sin(startAngle)
-    const y1 = 50 - 40 * Math.cos(startAngle)
-    const x2 = 50 + 40 * Math.sin(endAngle)
-    const y2 = 50 - 40 * Math.cos(endAngle)
-    const largeArc = pct > 0.5 ? 1 : 0
-    return { name, count, pct, x1, y1, x2, y2, largeArc, color: COLORS[i % COLORS.length] }
-  })
+  const kpis = [
+    { label: 'Capital investi', value: eur(stats.capitalInvesti), sub: `${stats.inStock.length} paire${stats.inStock.length > 1 ? 's' : ''} en stock`, tone: 'text-ink' },
+    { label: 'Valeur de marché', value: '—', sub: 'Cote StockX à venir', tone: 'text-muted' },
+    { label: 'Plus-value latente', value: '—', sub: 'Cote StockX à venir', tone: 'text-muted' },
+    { label: 'P&L réalisé', value: signed(stats.pnlRealise), sub: `${stats.sold.length} paire${stats.sold.length > 1 ? 's' : ''} vendue${stats.sold.length > 1 ? 's' : ''}`, tone: stats.pnlRealise >= 0 ? 'text-accent-ink' : 'text-neg' },
+  ]
 
   return (
-    <div className="mb-8">
+    <div className="mb-8 flex flex-col gap-4">
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          { label: 'Capital en stock', value: `€${stats.capitalInvesti.toFixed(0)}`, sub: `${stats.inStock.length} paires en stock`, color: 'text-white' },
-          { label: 'Total investi', value: `€${stats.totalInvesti.toFixed(0)}`, sub: 'Tous achats confondus', color: 'text-blue-400' },
-          { label: 'P&L réalisé', value: `${stats.pnlRealise >= 0 ? '+' : ''}€${stats.pnlRealise.toFixed(0)}`, sub: `${stats.sold.length} paires vendues`, color: stats.pnlRealise >= 0 ? 'text-green-400' : 'text-red-400' },
-          { label: 'Paires totales', value: String(purchases.length), sub: `${stats.sold.length} vendues · ${stats.inStock.length} en stock`, color: 'text-white' },
-        ].map((kpi, i) => (
-          <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-            <div className="text-xs text-zinc-500 uppercase tracking-wider mb-2">{kpi.label}</div>
-            <div className={`text-2xl font-bold ${kpi.color}`}>{kpi.value}</div>
-            <div className="text-xs text-zinc-600 mt-1">{kpi.sub}</div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {kpis.map(k => (
+          <div key={k.label} className="rounded-xl border border-line bg-surface p-4 shadow-card">
+            <div className="mb-2 text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</div>
+            <div className={`text-2xl font-bold tracking-tight tabular ${k.tone}`}>{k.value}</div>
+            <div className="mt-1 text-xs text-muted">{k.sub}</div>
           </div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-        {/* Camembert */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">Répartition par plateforme d'achat</h3>
-          {total === 0 ? (
-            <p className="text-zinc-500 text-sm">Aucune donnée</p>
+      {/* Courbe + répartition */}
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.9fr_1fr]">
+        <PortfolioChart points={stats.points} title="Évolution du capital investi" />
+
+        <div className="rounded-card border border-line bg-surface p-4 shadow-card md:p-5">
+          <h3 className="mb-4 text-[13px] font-semibold text-ink">Répartition par plateforme</h3>
+          {stats.total === 0 ? (
+            <p className="text-sm text-muted">Aucune donnée</p>
           ) : (
-            <div className="flex items-center gap-6">
-              <svg viewBox="0 0 100 100" className="w-32 h-32 flex-shrink-0">
-                {slices.map((slice, i) => (
-                  slice.pct === 1 ? (
-                    <circle key={i} cx="50" cy="50" r="40" fill={slice.color} />
-                  ) : (
-                    <path
-                      key={i}
-                      d={`M 50 50 L ${slice.x1} ${slice.y1} A 40 40 0 ${slice.largeArc} 1 ${slice.x2} ${slice.y2} Z`}
-                      fill={slice.color}
-                    />
-                  )
-                ))}
-              </svg>
-              <div className="flex flex-col gap-2">
-                {slices.map((slice, i) => (
-                  <div key={i} className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: slice.color }} />
-                    <span className="text-sm text-zinc-300">{slice.name}</span>
-                    <span className="text-xs text-zinc-500 ml-1">{slice.count} ({Math.round(slice.pct * 100)}%)</span>
+            <div className="flex items-center gap-5">
+              <div
+                className="h-[104px] w-[104px] flex-shrink-0 rounded-full"
+                style={{
+                  background: `conic-gradient(${gradient})`,
+                  WebkitMask: 'radial-gradient(circle 33px at 50% 50%, transparent 98%, #000 100%)',
+                  mask: 'radial-gradient(circle 33px at 50% 50%, transparent 98%, #000 100%)',
+                }}
+                role="img"
+                aria-label={stats.platforms.map(p => `${p.name} ${Math.round((p.count / stats.total) * 100)}%`).join(', ')}
+              />
+              <div className="flex min-w-0 flex-col gap-2">
+                {stats.platforms.map(p => (
+                  <div key={p.name} className="flex items-center gap-2 text-[12.5px]">
+                    <span className="h-[9px] w-[9px] flex-shrink-0 rounded-[3px]" style={{ backgroundColor: p.color }} />
+                    <span className="truncate text-ink">{p.name}</span>
+                    <span className="ml-auto pl-3 text-muted tabular">
+                      {p.count} · {Math.round((p.count / stats.total) * 100)}%
+                    </span>
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Top ventes */}
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-4">🏆 Meilleures ventes</h3>
-          {stats.topSold.length === 0 ? (
-            <p className="text-zinc-500 text-sm">Aucune vente enregistrée</p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {stats.topSold.map((p, i) => (
-                <div key={p.id} className="flex items-center justify-between">
-                  <div>
-                    <div className="text-sm text-white font-medium">{p.brand} {p.model}</div>
-                    <div className="text-xs text-zinc-500">{p.colorway}</div>
-                  </div>
-                  <div className="text-right">
-                    <div className={`font-mono font-bold ${p.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                      {p.pnl >= 0 ? '+' : ''}€{p.pnl.toFixed(0)}
-                    </div>
-                  </div>
-                </div>
-              ))}
             </div>
           )}
         </div>
