@@ -36,11 +36,11 @@ export default function RegisterPage() {
       return
     }
 
-  const signInRes = await signIn('credentials', {
-  email: form.email,
-  password: form.password,
-  redirect: false,
-})
+    const signInRes = await signIn('credentials', {
+      email: form.email,
+      password: form.password,
+      redirect: false,
+    })
 
     setLoading(false)
 
@@ -53,78 +53,104 @@ export default function RegisterPage() {
     }
   }
 
+  const input =
+    'w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent-soft transition'
+  const label = 'text-[11px] font-medium uppercase tracking-wider text-muted'
+
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-bg flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold mb-8 tracking-tight text-white text-center">
-          SOLE<span className="text-green-400">TRACK</span>
-        </h1>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Créer un compte</h2>
+        <div className="text-center mb-8">
+          <div className="text-2xl font-bold tracking-tight text-ink">
+            SOLE<span className="text-muted">TRACK</span>
+          </div>
+          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">
+            Achat · Stock · Revente
+          </p>
+        </div>
+
+        <div className="bg-surface border border-line rounded-card shadow-card p-6">
+          <h1 className="text-lg font-semibold text-ink mb-6">Créer un compte</h1>
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-400 uppercase tracking-wider">Nom d'utilisateur *</label>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="username" className={label}>Nom d'utilisateur *</label>
               <input
+                id="username"
                 type="text"
+                autoComplete="username"
                 value={form.username}
                 onChange={e => setForm(prev => ({ ...prev, username: e.target.value }))}
-                className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
+                className={input}
                 required
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-400 uppercase tracking-wider">Email *</label>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="email" className={label}>Email *</label>
               <input
+                id="email"
                 type="email"
+                autoComplete="email"
                 value={form.email}
                 onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
-                className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
+                className={input}
                 required
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-400 uppercase tracking-wider">Mot de passe *</label>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="password" className={label}>Mot de passe *</label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
                   value={form.password}
                   onChange={e => setForm(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500 pr-10"
+                  className={`${input} pr-20`}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2 text-zinc-400 hover:text-white text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted hover:text-ink transition"
                 >
-                  {showPassword ? '🙈' : '👁'}
+                  {showPassword ? 'Masquer' : 'Afficher'}
                 </button>
               </div>
             </div>
-            <div className="flex items-center gap-3 bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-3">
+
+            <label
+              htmlFor="alerts"
+              className="flex items-start gap-3 rounded-xl border border-line bg-bg px-3.5 py-3 cursor-pointer"
+            >
               <input
                 type="checkbox"
                 id="alerts"
                 checked={form.alertsEnabled}
                 onChange={e => setForm(prev => ({ ...prev, alertsEnabled: e.target.checked }))}
-                className="w-4 h-4 accent-green-500"
+                className="mt-0.5 h-4 w-4 accent-[var(--st-accent)]"
               />
-              <label htmlFor="alerts" className="text-sm text-zinc-300 cursor-pointer">
+              <span className="text-sm text-ink">
                 Recevoir les alertes de revente par email lors des mises à jour quotidiennes
-              </label>
-            </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+              </span>
+            </label>
+
+            {error && <p className="text-sm text-neg">{error}</p>}
+
             <button
               type="submit"
               disabled={loading}
-              className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors mt-2"
+              className="mt-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-bg hover:bg-ink/90 disabled:opacity-50 transition"
             >
-              {loading ? 'Création...' : 'Créer mon compte'}
+              {loading ? 'Création…' : 'Créer mon compte'}
             </button>
           </form>
-          <p className="text-zinc-500 text-sm text-center mt-4">
+
+          <p className="mt-5 text-center text-sm text-muted">
             Déjà un compte ?{' '}
-            <Link href="/login" className="text-green-400 hover:text-green-300">
+            <Link href="/login" className="font-medium text-accent-ink hover:underline">
               Se connecter
             </Link>
           </p>
