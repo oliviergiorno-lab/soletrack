@@ -33,56 +33,78 @@ export default function LoginPage() {
     }
   }
 
+  const input =
+    'w-full rounded-xl border border-line bg-surface px-3.5 py-2.5 text-sm text-ink outline-none placeholder:text-muted/70 focus:border-accent focus:ring-2 focus:ring-accent-soft transition'
+
   return (
-    <main className="min-h-screen bg-zinc-950 flex items-center justify-center p-4">
+    <main className="min-h-screen bg-bg flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold mb-8 tracking-tight text-white text-center">
-          SOLE<span className="text-green-400">TRACK</span>
-        </h1>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Connexion</h2>
+        <div className="text-center mb-8">
+          <div className="text-2xl font-bold tracking-tight text-ink">
+            SOLE<span className="text-muted">TRACK</span>
+          </div>
+          <p className="mt-2 text-xs uppercase tracking-[0.18em] text-muted">
+            Achat · Stock · Revente
+          </p>
+        </div>
+
+        <div className="bg-surface border border-line rounded-card shadow-card p-6">
+          <h1 className="text-lg font-semibold text-ink mb-6">Connexion</h1>
+
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-400 uppercase tracking-wider">Email</label>
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="email" className="text-[11px] font-medium uppercase tracking-wider text-muted">
+                Email
+              </label>
               <input
+                id="email"
                 type="email"
+                autoComplete="email"
                 value={form.email}
                 onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
-                className="bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500"
+                className={input}
                 required
               />
             </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-zinc-400 uppercase tracking-wider">Mot de passe</label>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="password" className="text-[11px] font-medium uppercase tracking-wider text-muted">
+                Mot de passe
+              </label>
               <div className="relative">
                 <input
+                  id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   value={form.password}
                   onChange={e => setForm(prev => ({ ...prev, password: e.target.value }))}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-zinc-500 pr-10"
+                  className={`${input} pr-20`}
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2 text-zinc-400 hover:text-white text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted hover:text-ink transition"
                 >
-                  {showPassword ? '🙈' : '👁'}
+                  {showPassword ? 'Masquer' : 'Afficher'}
                 </button>
               </div>
             </div>
-            {error && <p className="text-red-400 text-sm">{error}</p>}
+
+            {error && <p className="text-sm text-neg">{error}</p>}
+
             <button
               type="submit"
               disabled={loading}
-              className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-black font-bold px-5 py-2 rounded-lg text-sm transition-colors mt-2"
+              className="mt-2 rounded-xl bg-ink px-5 py-2.5 text-sm font-semibold text-bg hover:bg-ink/90 disabled:opacity-50 transition"
             >
-              {loading ? 'Connexion...' : 'Se connecter'}
+              {loading ? 'Connexion…' : 'Se connecter'}
             </button>
           </form>
-          <p className="text-zinc-500 text-sm text-center mt-4">
+
+          <p className="mt-5 text-center text-sm text-muted">
             Pas encore de compte ?{' '}
-            <Link href="/register" className="text-green-400 hover:text-green-300">
+            <Link href="/register" className="font-medium text-accent-ink hover:underline">
               Créer un compte
             </Link>
           </p>
