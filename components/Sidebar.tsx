@@ -1,4 +1,5 @@
 import LogoutButton from './LogoutButton'
+import SoleTrackMark from './brand/SoleTrackMark'
 
 const NAV = [
   { href: '#dashboard', label: 'Dashboard', d: 'M3 3h7v9H3zM14 3h7v5h-7zM14 12h7v9h-7zM3 16h7v5H3z', active: true },
@@ -19,9 +20,10 @@ export default function Sidebar({ username }: { username: string }) {
 
   return (
     <aside className="bg-side text-[#E7E5E1] md:sticky md:top-0 md:h-screen flex md:flex-col flex-row flex-wrap items-center md:items-stretch gap-1 px-4 py-3 md:py-5">
-      <div className="w-full md:w-auto font-bold text-[17px] tracking-tight px-2 pb-2 md:pb-5">
-        SOLE<span className="text-[#9C978E]">TRACK</span>
-      </div>
+      <a href="#dashboard" className="flex w-auto md:w-full items-center gap-2.5 px-2 pb-0 md:pb-5" aria-label="SoleTrack">
+        <SoleTrackMark size={30} />
+        <span className="font-extrabold text-[17px] tracking-tight leading-none">SOLE<span className="text-[#849681]">TRACK</span></span>
+      </a>
 
       <nav className="flex md:flex-col flex-row flex-wrap gap-1 md:gap-0.5">
         {NAV.map(item => (
