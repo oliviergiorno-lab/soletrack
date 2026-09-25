@@ -155,8 +155,8 @@ export default function AddPurchaseForm() {
         {searching && <div className="absolute right-3 top-[34px] text-xs text-muted">Recherche…</div>}
         {results.length > 0 && (
           <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface shadow-card">
-            {results.map(product => (
-              <button key={product.sku} type="button" onClick={() => handleSelect(product)} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-bg">
+            {results.map((product, i) => (
+              <button key={product.sku || `${product.brand}-${product.model}-${i}`} type="button" onClick={() => handleSelect(product)} className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-bg">
                 {product.thumbnail ? (
                   <Image src={product.thumbnail} alt={product.model} width={44} height={44} className="rounded-[10px] bg-[#EFEBE3] object-contain" />
                 ) : (
