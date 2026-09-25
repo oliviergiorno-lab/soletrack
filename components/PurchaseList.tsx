@@ -23,6 +23,7 @@ type Purchase = {
   soldAt: string | null
   notes: string | null
   purchasedAt: string
+  marketPrice: number | null
 }
 
 const STATUS_LABEL: Record<string, string> = { IN_STOCK: 'En stock', SOLD: 'Vendu', RETURNED: 'Retourné' }
@@ -39,6 +40,9 @@ const btnGhost = 'px-3 py-2 text-sm text-muted hover:text-ink transition'
 
 function eur(n: number) {
   return '€' + Math.round(n).toLocaleString('fr-FR')
+}
+function pct(n: number) {
+  return (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1).replace('.', ',') + ' %'
 }
 
 export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
@@ -81,6 +85,11 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
   }
 
   const pnl = (p: Purchase) => (p.sellPrice ? p.sellPrice - (p.sellFees || 0) - p.totalCost : null)
+  // Variation cote vs coût d'achat, uniquement pour les paires en stock cotées
+  const delta = (p: Purchase) =>
+    p.status === 'IN_STOCK' && p.marketPrice != null && p.totalCost > 0
+      ? ((p.marketPrice - p.totalCost) / p.totalCost) * 100
+      : null
 
   async function patch(id: number, body: object) {
     setLoading(id)
@@ -169,6 +178,19 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
     </select>
   )
 
+  const Quote = ({ p, align }: { p: Purchase; align: 'left' | 'right' }) => {
+    const d = delta(p)
+    if (p.status !== 'IN_STOCK' || p.marketPrice == null) return <span className="text-xs text-muted">—</span>
+    return (
+      <div className={`tabular ${align === 'right' ? 'text-right' : ''}`}>
+        <div className="text-sm font-semibold text-ink">{eur(p.marketPrice)}</div>
+        {d !== null && (
+          <div className={`text-xs font-semibold ${d >= 0 ? 'text-accent-ink' : 'text-neg'}`}>{pct(d)}</div>
+        )}
+      </div>
+    )
+  }
+
   const Actions = ({ p }: { p: Purchase }) => (
     <div className="flex items-center gap-3 text-xs">
       <button onClick={() => openNotes(p)} className="text-muted hover:text-ink transition" title="Notes">Notes</button>
@@ -207,7 +229,6 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
 
   return (
     <div className="mb-10">
-      {/* Modale vente */}
       {sellModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
           <div className="w-full max-w-md rounded-card border border-line bg-surface p-6 shadow-card">
@@ -241,7 +262,6 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
         </div>
       )}
 
-      {/* Modale notes */}
       {notesId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4">
           <div className="w-full max-w-md rounded-card border border-line bg-surface p-6 shadow-card">
@@ -261,7 +281,6 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
         </div>
       )}
 
-      {/* En-tête + filtres */}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base font-semibold tracking-tight text-ink">Stock</h2>
         <div className="flex flex-wrap items-center gap-2">
@@ -295,7 +314,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
           <div className="py-16 text-center text-sm text-muted">Aucune paire dans cette catégorie</div>
         ) : (
           <>
-            {/* MOBILE : cartes */}
+            {/* MOBILE */}
             <div className="flex flex-col divide-y divide-line md:hidden">
               {filtered.map(p => {
                 const profit = pnl(p)
@@ -316,6 +335,12 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                         )}
                       </div>
                     </div>
+                    {p.status === 'IN_STOCK' && p.marketPrice != null && (
+                      <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
+                        <span className="text-[10px] uppercase tracking-wider text-muted">Cote StockX</span>
+                        <Quote p={p} align="right" />
+                      </div>
+                    )}
                     <div className="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3">
                       <StatusSelect p={p} />
                       <Actions p={p} />
@@ -326,12 +351,12 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
               })}
             </div>
 
-            {/* DESKTOP : tableau */}
+            {/* DESKTOP */}
             <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-line">
-                    {['Sneaker', 'Taille', 'Fournisseur', 'Achat', 'Vente', 'P&L', 'Statut', ''].map((h, i) => (
+                    {['Sneaker', 'Taille', 'Fournisseur', 'Achat', 'Cote', 'Vente', 'P&L', 'Statut', ''].map((h, i) => (
                       <th key={i} className="whitespace-nowrap px-4 py-3 text-left text-[11px] font-medium uppercase tracking-wider text-muted">{h}</th>
                     ))}
                   </tr>
@@ -355,6 +380,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                           <td className="whitespace-nowrap px-4 py-3 text-sm text-ink">{p.size}</td>
                           <td className="whitespace-nowrap px-4 py-3 text-sm text-muted">{p.platform}</td>
                           <td className="whitespace-nowrap px-4 py-3 text-sm font-semibold text-ink tabular">{eur(p.totalCost)}</td>
+                          <td className="whitespace-nowrap px-4 py-3"><Quote p={p} align="left" /></td>
                           <td className="whitespace-nowrap px-4 py-3 text-xs text-muted tabular">
                             {p.status === 'SOLD' && p.sellPrice
                               ? <>{eur(p.sellPrice)}{p.sellFees ? ` (−${eur(p.sellFees)})` : ''}{p.sellPlatform ? ` · ${p.sellPlatform}` : ''}</>
@@ -368,7 +394,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
                         </tr>
                         {editId === p.id && (
                           <tr className="bg-bg">
-                            <td colSpan={8} className="px-4 py-4"><EditForm p={p} /></td>
+                            <td colSpan={9} className="px-4 py-4"><EditForm p={p} /></td>
                           </tr>
                         )}
                       </React.Fragment>
