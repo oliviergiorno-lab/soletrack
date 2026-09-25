@@ -1,106 +1,150 @@
-import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
 
-const BASE = 'https://api.kicks.dev/v3'
+export const dynamic = 'force-dynamic'
+export const maxDuration = 60
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
+/** "EU 42.5" | "42,5" | "EU 40 2/3" → 42.5 | 40.67 */
 function num(s: unknown): number | null {
-  const m = String(s ?? '').replace(',', '.').match(/\d+(\.\d+)?/)
+  if (s == null) return null
+  const str = String(s).replace(',', '.')
+  const frac = str.match(/(\d+)\s+(\d)\/(\d)/)
+  if (frac) return +frac[1] + +frac[2] / +frac[3]
+  const m = str.match(/\d+(\.\d+)?/)
   return m ? parseFloat(m[0]) : null
 }
+const same = (a: number | null, b: number | null) => a != null && b != null && Math.abs(a - b) < 0.05
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function variantEu(v: any): number | null {
-  const fromList = (v.sizes ?? []).find((s: any) => String(s.type ?? '').toLowerCase() === 'eu')?.size
-  const raw = v.size_eu ?? v.eu ?? fromList ?? (/^eu/i.test(String(v.size ?? '')) ? v.size : null) ?? (/^eu/i.test(String(v.name ?? '')) ? v.name : null)
-  return num(raw)
-}
+type Quote = { price: number } | 'subscription' | null
+type Provider = (sku: string, sizeEu: number) => Promise<Quote>
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function variantPrice(v: any): number | null {
-  const c = v.lowest_ask ?? v.market?.lowest_ask ?? v.market?.bids?.lowest_ask ?? v.lowest_price?.amount ?? v.lowest_price ?? v.ask?.amount ?? v.price
-  const n = typeof c === 'number' ? c : num(c)
-  return n && n > 0 ? n : null
-}
+/* ───────── KicksDB (payant) ───────── */
+const KICKS = 'https://api.kicks.dev/v3'
+const kicksCache = new Map<string, any[] | 'subscription' | null>()
 
-async function kicks(path: string, key: string) {
-  const res = await fetch(`${BASE}${path}`, { headers: { Authorization: `Bearer ${key}` }, cache: 'no-store' })
-  return res
-}
-
-async function refresh(where: { userId?: number }) {
+async function kicksVariants(sku: string): Promise<any[] | 'subscription' | null> {
+  if (kicksCache.has(sku)) return kicksCache.get(sku)!
   const key = process.env.KICKSDB_API_KEY
-  if (!key) return { status: 500, body: { error: 'config' } }
+  if (!key) return null
+  const h = { Authorization: `Bearer ${key}` }
+  let out: any[] | 'subscription' | null = null
+  try {
+    const r1 = await fetch(`${KICKS}/stockx/products?query=${encodeURIComponent(sku)}&currency=EUR&market=FR`, { headers: h, cache: 'no-store' })
+    if (r1.status === 403) out = 'subscription'
+    else if (r1.ok) {
+      const d1 = await r1.json()
+      const list: any[] = Array.isArray(d1?.data) ? d1.data : []
+      const p = list.find(x => String(x.sku ?? '').toUpperCase() === sku) ?? list[0]
+      if (p?.id) {
+        await sleep(300)
+        const r2 = await fetch(`${KICKS}/stockx/products/${p.id}/variants?currency=EUR&market=FR`, { headers: h, cache: 'no-store' })
+        if (r2.status === 403) out = 'subscription'
+        else if (r2.ok) { const d2 = await r2.json(); out = Array.isArray(d2?.data) ? d2.data : Array.isArray(d2) ? d2 : null }
+      }
+    }
+  } catch { out = null }
+  kicksCache.set(sku, out)
+  return out
+}
 
-  const stock = await prisma.purchase.findMany({
-    where: { ...where, status: 'IN_STOCK', sku: { not: null } },
+const kicksdb: Provider = async (sku, sizeEu) => {
+  const vs = await kicksVariants(sku)
+  if (vs === 'subscription') return 'subscription'
+  if (!vs) return null
+  const v = vs.find(x => same(num(x.size_eu ?? x.eu ?? x.sizes?.find((s: any) => /eu/i.test(s.type))?.size ?? (/^EU/i.test(String(x.size ?? '')) ? x.size : null)), sizeEu))
+  const price = num(v?.lowest_ask ?? v?.market?.lowest_ask ?? v?.market?.bids?.lowest_ask ?? v?.lowest_price?.amount ?? v?.lowest_price ?? v?.price)
+  return price ? { price } : null
+}
+
+/* ───────── veilleio via RapidAPI (gratuit, 1 req/s) ───────── */
+const RAPID = 'https://stockx1.p.rapidapi.com/v2/stockx'
+const rapidCache = new Map<string, any[] | null>()
+
+async function rapidVariants(sku: string): Promise<any[] | null> {
+  if (rapidCache.has(sku)) return rapidCache.get(sku)!
+  const key = process.env.RAPIDAPI_KEY
+  if (!key) return null
+  const h = { 'x-rapidapi-key': key, 'x-rapidapi-host': 'stockx1.p.rapidapi.com' }
+  let out: any[] | null = null
+  try {
+    await sleep(1100)
+    const r1 = await fetch(`${RAPID}/search?query=${encodeURIComponent(sku)}&limit=5`, { headers: h, cache: 'no-store' })
+    if (r1.ok) {
+      const list: any[] = await r1.json()
+      const hit = (Array.isArray(list) ? list : []).find(x => String(x.sku ?? '').toUpperCase() === sku) ?? list?.[0]
+      if (hit?.slug) {
+        await sleep(1100)
+        const r2 = await fetch(`${RAPID}/product?query=${encodeURIComponent(hit.slug)}&currency=EUR&country=FR`, { headers: h, cache: 'no-store' })
+        if (r2.ok) {
+          const p = await r2.json()
+          // sécurité : on ne garde que si le SKU correspond
+          if (!p?.sku || String(p.sku).toUpperCase() === sku) out = Array.isArray(p?.variants) ? p.variants : null
+        }
+      }
+    }
+  } catch { out = null }
+  rapidCache.set(sku, out)
+  return out
+}
+
+const veilleio: Provider = async (sku, sizeEu) => {
+  const vs = await rapidVariants(sku)
+  if (!vs) return null
+  const v = vs.find(x => same(num(x.sizes?.find((s: any) => s.type === 'eu')?.size), sizeEu))
+  const price = num(v?.market?.bids?.lowest_ask) ?? num(v?.market?.sales?.last_sale)
+  return price ? { price } : null
+}
+
+/* ───────── Refresh ───────── */
+async function refresh(where: { userId?: number }) {
+  const pairs = await prisma.purchase.findMany({
+    where: { ...where, status: 'IN_STOCK', sku: { not: '' } },
     select: { id: true, sku: true, size: true },
   })
-  if (!stock.length) return { status: 200, body: { updated: 0, total: 0 } }
-
-  const bySku = new Map<string, typeof stock>()
-  for (const p of stock) {
-    const k = p.sku!.trim().toUpperCase()
-    bySku.set(k, [...(bySku.get(k) ?? []), p])
-  }
-
+  const now = new Date()
   let updated = 0
   let subscription = false
-  const now = new Date()
+  let used: 'kicksdb' | 'veilleio' | null = null
 
-  for (const [sku, pairs] of bySku) {
-    // 1) produit → id
-    const s = await kicks(`/stockx/products?query=${encodeURIComponent(sku)}&currency=EUR&market=FR`, key)
-    if (s.status === 403) { subscription = true; break }
-    if (!s.ok) { await sleep(300); continue }
-    const sj = await s.json()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const product = (sj?.data ?? []).find((p: any) => String(p.sku ?? '').toUpperCase() === sku) ?? sj?.data?.[0]
-    if (!product?.id && !product?.slug) { await sleep(300); continue }
+  for (const p of pairs) {
+    const sku = (p.sku ?? "").trim().toUpperCase()
+    const sizeEu = num(p.size)
+    if (!sku || sizeEu == null) continue
 
-    // 2) variantes → prix par pointure
-    await sleep(300)
-    const v = await kicks(`/stockx/products/${encodeURIComponent(product.id ?? product.slug)}/variants?currency=EUR&market=FR`, key)
-    if (v.status === 403) { subscription = true; break }
-    if (!v.ok) { await sleep(300); continue }
-    const vj = await v.json()
-    const variants = Array.isArray(vj?.data) ? vj.data : Array.isArray(vj) ? vj : []
+    let q: Quote = await kicksdb(sku, sizeEu)
+    if (q === 'subscription') { subscription = true; q = null } else if (q) used ??= 'kicksdb'
+    if (!q) { q = await veilleio(sku, sizeEu); if (q && q !== 'subscription') used = used ?? 'veilleio' }
 
-    for (const p of pairs) {
-      const want = num(p.size)
-      if (want === null) continue
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const match = variants.find((x: any) => variantEu(x) === want)
-      const price = match ? variantPrice(match) : null
-      if (price === null) continue
-      await prisma.purchase.update({ where: { id: p.id }, data: { marketPrice: price, marketUpdatedAt: now } })
+    if (q && q !== 'subscription') {
+      await prisma.purchase.update({ where: { id: p.id }, data: { marketPrice: q.price, marketUpdatedAt: now } })
       updated++
     }
-    await sleep(300)
   }
 
-  if (subscription && updated === 0) return { status: 402, body: { error: 'subscription' } }
-  return { status: 200, body: { updated, total: stock.length, subscription } }
+  if (updated === 0 && subscription && !process.env.RAPIDAPI_KEY) {
+    return NextResponse.json({ error: 'subscription' }, { status: 402 })
+  }
+  return NextResponse.json({ updated, total: pairs.length, subscription, provider: used })
 }
 
-// Bouton / rafraîchissement à l'ouverture : uniquement le stock de l'utilisateur connecté
 export async function POST() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.email) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   const user = await prisma.user.findUnique({ where: { email: session.user.email } })
   if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-  const r = await refresh({ userId: user.id })
-  return NextResponse.json(r.body, { status: r.status })
+  return refresh({ userId: user.id })
 }
 
-// Cron quotidien (Vercel envoie Authorization: Bearer CRON_SECRET) : tout le stock
 export async function GET(req: Request) {
-  const auth = req.headers.get('authorization') ?? ''
+  const auth = req.headers.get('authorization')
   if (!process.env.CRON_SECRET || auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
   }
-  const r = await refresh({})
-  return NextResponse.json(r.body, { status: r.status })
+  return refresh({})
 }
