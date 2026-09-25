@@ -1,72 +1,47 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 
-export default function BarcodeScanner({ onResult }: { onResult: (result: string) => void }) {
-  const scannerRef = useRef<HTMLDivElement>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [scanning, setScanning] = useState(false)
+type Props = {
+  onResult: (code: string) => void
+}
 
-  useEffect(() => {
-    let quagga: any = null
+export default function BarcodeScanner({ onResult }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
 
-    async function startScan() {
-      try {
-        const Quagga = (await import('@ericblade/quagga2')).default
-        quagga = Quagga
-
-        const config: any = {
-          inputStream: {
-            type: 'LiveStream',
-            target: scannerRef.current!,
-            constraints: {
-              facingMode: 'environment',
-              width: { min: 640 },
-              height: { min: 480 },
-            },
-          },
-          decoder: {
-            readers: ['ean_13_reader', 'ean_8_reader', 'code_128_reader', 'upc_reader'],
-          },
-          locate: true,
-        }
-
-        await Quagga.init(config, (err: any) => {
-          if (err) {
-            setError('Impossible d\'accéder à la caméra')
-            return
-          }
-          Quagga.start()
-          setScanning(true)
-        })
-
-        Quagga.onDetected((result: any) => {
-          const code = result.codeResult.code
-          if (code) {
-            onResult(code)
-            Quagga.stop()
-            setScanning(false)
-          }
-        })
-      } catch (e) {
-        setError('Erreur scanner')
-      }
+  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setBusy(true)
+    setError('')
+    try {
+      const { readBarcodes } = await import('zxing-wasm/reader')
+      const results = await readBarcodes(file, {
+        formats: ['EAN-13', 'UPC-A', 'UPC-E', 'EAN-8', 'Code128', 'QRCode'],
+        tryHarder: true,
+        maxNumberOfSymbols: 1,
+      })
+      const text = results.find(r => r.isValid && r.text)?.text
+      if (text) onResult(text.trim())
+      else setError('Aucun code lisible. Rapproche-toi du code-barres et évite les reflets.')
+    } catch {
+      setError('Lecture impossible sur cette photo. Réessaie.')
+    } finally {
+      setBusy(false)
+      if (inputRef.current) inputRef.current.value = ''
     }
-
-    startScan()
-
-    return () => {
-      if (quagga) {
-        try { quagga.stop() } catch {}
-      }
-    }
-  }, [onResult])
+  }
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div ref={scannerRef} className="w-full rounded-lg overflow-hidden" style={{ minHeight: '250px' }} />
-      {scanning && <p className="text-zinc-400 text-sm">Pointez la caméra vers le code barre...</p>}
-      {error && <p className="text-red-400 text-sm">{error}</p>}
+    <div className="flex flex-wrap items-center gap-3">
+      <input ref={inputRef} type="file" accept="image/*" capture="environment" onChange={onFile} className="hidden" aria-hidden="true" tabIndex={-1} />
+      <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink hover:bg-bg disabled:opacity-50 transition">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 12h10" /></svg>
+        {busy ? 'Lecture…' : 'Scanner la boîte'}
+      </button>
+      {error && <span className="text-xs text-neg">{error}</span>}
     </div>
   )
 }
