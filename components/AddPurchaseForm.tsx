@@ -29,6 +29,8 @@ export default function AddPurchaseForm() {
   const [searching, setSearching] = useState(false)
   const [error, setError] = useState('')
   const [scanInfo, setScanInfo] = useState('')
+  const [scanTone, setScanTone] = useState<'ok' | 'warn'>('ok')
+  const [pendingGtin, setPendingGtin] = useState<string | null>(null)
   const debounceRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   const [form, setForm] = useState({
@@ -58,10 +60,36 @@ export default function AddPurchaseForm() {
     }, 400)
   }, [query, selected])
 
-  function handleSelect(product: Product) {
+  function info(msg: string, tone: 'ok' | 'warn' = 'ok') {
+    setScanInfo(msg)
+    setScanTone(tone)
+  }
+
+  async function handleSelect(product: Product) {
     setSelected(product)
     setQuery(`${product.brand} ${product.model} ${product.colorway}`)
     setResults([])
+    if (!pendingGtin || !product.sku) return
+
+    info('Vérification de la pointure via le code-barres…')
+    try {
+      const res = await fetch(`/api/lookup?gtin=${encodeURIComponent(pendingGtin)}&sku=${encodeURIComponent(product.sku)}`)
+      if (res.ok) {
+        const p = await res.json()
+        if (p.size) {
+          setForm(prev => ({ ...prev, size: p.size }))
+          info(`Pointure ${p.size} confirmée par le code-barres.`)
+        } else {
+          info('Modèle confirmé, mais pointure introuvable — indique-la.', 'warn')
+        }
+      } else if (res.status === 409) {
+        info('Attention : ce code-barres ne correspond pas à ce modèle.', 'warn')
+      } else {
+        info('Impossible de vérifier la pointure — indique-la.', 'warn')
+      }
+    } catch {
+      info('Impossible de vérifier la pointure — indique-la.', 'warn')
+    }
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
@@ -69,28 +97,22 @@ export default function AddPurchaseForm() {
   }
 
   async function handleScan(code: string) {
-    setScanInfo(`Code lu : ${code} — identification…`)
     setError('')
+    setPendingGtin(code)
+    info(`Code lu : ${code} — identification…`)
     try {
       const res = await fetch(`/api/lookup?gtin=${encodeURIComponent(code)}`)
-      if (res.status === 402) {
-        setScanInfo(`Code lu : ${code}. Identification disponible dès l'activation de l'abonnement KicksDB — cherche le modèle ci-dessous.`)
+      if (res.ok) {
+        const p = await res.json()
+        setPendingGtin(null)
+        handleSelect({ sku: p.sku, brand: p.brand, model: p.model, colorway: p.colorway, thumbnail: p.thumbnail })
+        if (p.size) setForm(prev => ({ ...prev, size: p.size }))
+        info(p.size ? `Paire identifiée en ${p.size}.` : 'Paire identifiée — indique la pointure.')
         return
       }
-      if (res.status === 404) {
-        setScanInfo(`Code lu : ${code}, mais aucune paire trouvée. Cherche le modèle ci-dessous.`)
-        return
-      }
-      if (!res.ok) {
-        setScanInfo(`Code lu : ${code}. Service indisponible, réessaie ou cherche le modèle ci-dessous.`)
-        return
-      }
-      const p = await res.json()
-      handleSelect({ sku: p.sku, brand: p.brand, model: p.model, colorway: p.colorway, thumbnail: p.thumbnail })
-      if (p.size) setForm(prev => ({ ...prev, size: p.size }))
-      setScanInfo(p.size ? `Paire identifiée en ${p.size}.` : 'Paire identifiée — indique la pointure.')
+      info(`Code lu : ${code}. Cherche le modèle ci-dessous, la pointure sera déduite automatiquement.`)
     } catch {
-      setScanInfo(`Code lu : ${code}. Identification impossible pour le moment.`)
+      info(`Code lu : ${code}. Cherche le modèle ci-dessous, la pointure sera déduite automatiquement.`)
     }
   }
 
@@ -100,6 +122,7 @@ export default function AddPurchaseForm() {
     setQuery('')
     setError('')
     setScanInfo('')
+    setPendingGtin(null)
     setForm({ size: '', orderNumber: '', platform: 'StockX', buyPrice: '', fees: '' })
   }
 
@@ -134,7 +157,10 @@ export default function AddPurchaseForm() {
   if (!open) {
     return (
       <div className="mb-6">
-        <button onClick={() => setOpen(true)} className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-bg hover:bg-ink/90 transition">
+        <button
+          onClick={() => setOpen(true)}
+          className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-bg hover:bg-ink/90 transition"
+        >
           + Ajouter un achat
         </button>
       </div>
@@ -147,11 +173,24 @@ export default function AddPurchaseForm() {
         <h2 className="text-base font-semibold tracking-tight text-ink">Nouvel achat</h2>
         <BarcodeScanner onResult={handleScan} />
       </div>
-      {scanInfo && <p className="mb-4 rounded-xl bg-accent-soft px-3.5 py-2.5 text-sm text-accent-ink">{scanInfo}</p>}
+      {scanInfo && (
+        <p className={`mb-4 rounded-xl px-3.5 py-2.5 text-sm ${scanTone === 'warn' ? 'bg-neg/10 text-neg' : 'bg-accent-soft text-accent-ink'}`}>
+          {scanInfo}
+        </p>
+      )}
 
       <div className="relative mb-4">
-        <label htmlFor="sneaker-search" className={`${label} mb-1.5 block`}>Sneaker <span className="text-neg">*</span></label>
-        <input id="sneaker-search" value={query} onChange={e => { setQuery(e.target.value); setSelected(null) }} placeholder="Ex : Air Max 1 Lemonade…" autoComplete="off" className={input} />
+        <label htmlFor="sneaker-search" className={`${label} mb-1.5 block`}>
+          Sneaker <span className="text-neg">*</span>
+        </label>
+        <input
+          id="sneaker-search"
+          value={query}
+          onChange={e => { setQuery(e.target.value); setSelected(null) }}
+          placeholder="Ex : Air Max 1 Lemonade…"
+          autoComplete="off"
+          className={input}
+        />
         {searching && <div className="absolute right-3 top-[34px] text-xs text-muted">Recherche…</div>}
         {results.length > 0 && (
           <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-xl border border-line bg-surface shadow-card">
@@ -203,7 +242,11 @@ export default function AddPurchaseForm() {
 
       <div className="flex justify-end gap-2">
         <button onClick={reset} className="px-3 py-2 text-sm text-muted hover:text-ink transition">Annuler</button>
-        <button onClick={handleSubmit} disabled={loading || !selected} className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-bg hover:bg-ink/90 disabled:opacity-50 transition">
+        <button
+          onClick={handleSubmit}
+          disabled={loading || !selected}
+          className="rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-bg hover:bg-ink/90 disabled:opacity-50 transition"
+        >
           {loading ? 'Enregistrement…' : 'Enregistrer'}
         </button>
       </div>
