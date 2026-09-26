@@ -36,6 +36,7 @@ export default function BarcodeScanner({ onResult }: Props) {
 
   return (
     <div className="flex flex-wrap items-center gap-3">
+      <input ref={inputRef} type="file" accept="image/*" onChange={onFile} className="hidden" aria-hidden="true" tabIndex={-1} />
       <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="inline-flex items-center gap-2 rounded-xl border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink hover:bg-bg disabled:opacity-50 transition">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3M7 12h10" /></svg>
         {busy ? 'Lecture…' : 'Scanner la boîte'}
