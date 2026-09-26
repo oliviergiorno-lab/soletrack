@@ -6,7 +6,7 @@ export default function Sidebar({ username }: { username: string }) {
   const initials = username.slice(0, 2).toUpperCase()
 
   return (
-    <aside className="flex flex-col gap-2 bg-side px-4 pb-2 pt-[calc(env(safe-area-inset-top)+10px)] text-[#E7E5E1] md:sticky md:top-0 md:h-screen md:gap-1 md:py-5">
+    <aside className="flex flex-col gap-2 bg-side px-4 pb-2 pt-[calc(env(safe-area-inset-top)+10px)] text-[#E7E5E1] sticky top-0 z-40 md:h-screen md:gap-1 md:py-5">
       <div className="flex items-center justify-between md:block">
         <a href="#dashboard" className="flex items-center gap-2.5 px-2 md:pb-5" aria-label="SoleTrack">
           <SoleTrackMark size={30} />
