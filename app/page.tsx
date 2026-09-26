@@ -3,10 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/Sidebar'
-import PurchaseList from '@/components/PurchaseList'
-import AddPurchaseForm from '@/components/AddPurchaseForm'
-import Dashboard from '@/components/Dashboard'
-import RefreshPrices from '@/components/RefreshPrices'
+import AppShell from '@/components/AppShell'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,8 +26,6 @@ export default async function Home() {
     marketUpdatedAt: p.marketUpdatedAt?.toISOString() ?? null,
   }))
 
-  const inStock = purchases.filter(p => p.status === 'IN_STOCK').length
-  const period = new Intl.DateTimeFormat('fr-FR', { month: 'long', year: 'numeric' }).format(new Date())
   const lastUpdated = purchases
     .map(p => p.marketUpdatedAt)
     .filter((d): d is string => !!d)
@@ -40,40 +35,7 @@ export default async function Home() {
   return (
     <div className="min-h-screen bg-bg md:grid md:grid-cols-[212px_1fr]">
       <Sidebar username={user.username} />
-
-      <main className="min-w-0 px-4 py-5 md:px-7 md:py-6 lg:px-8">
-        <header className="mb-5 flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-ink">Dashboard</h1>
-            <p className="text-[13px] text-muted">
-              Vue d'ensemble de ton activité · {inStock} {inStock > 1 ? 'paires' : 'paire'} en stock
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <RefreshPrices lastUpdated={lastUpdated} />
-            <div className="rounded-full border border-line bg-surface px-3 py-1.5 text-xs text-muted capitalize">
-              {period}
-            </div>
-          </div>
-        </header>
-
-        <section id="dashboard" className="scroll-mt-4"><Dashboard purchases={purchases} /></section>
-        <section id="achats" className="scroll-mt-4"><AddPurchaseForm /></section>
-        <div id="ventes" />
-        <section id="stock" className="scroll-mt-4"><PurchaseList purchases={purchases} /></section>
-
-        <section id="export" className="scroll-mt-4 mb-10">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface p-5 shadow-card">
-            <div>
-              <h2 className="text-base font-semibold tracking-tight text-ink">Export</h2>
-              <p className="text-[13px] text-muted">Toutes tes paires au format CSV (Excel, Numbers, Google Sheets).</p>
-            </div>
-            <a href="/api/export" className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-bg hover:bg-ink/90 transition">
-              Télécharger le CSV
-            </a>
-          </div>
-        </section>
-      </main>
+      <AppShell purchases={purchases} lastUpdated={lastUpdated} />
     </div>
   )
 }

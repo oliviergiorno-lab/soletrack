@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -45,12 +45,12 @@ function pct(n: number) {
   return (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1).replace('.', ',') + ' %'
 }
 
-export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
+export default function PurchaseList({ purchases, initialFilter = 'ALL', title = 'Stock' }: { purchases: Purchase[]; initialFilter?: string; title?: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState<number | null>(null)
   const [editId, setEditId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState({ size: '', buyPrice: '', fees: '' })
-  const [filter, setFilter] = useState('ALL')
+  const [filter, setFilter] = useState(initialFilter)
   const [filterBrand, setFilterBrand] = useState('ALL')
   const [filterSize, setFilterSize] = useState('ALL')
   const [sortPrice, setSortPrice] = useState('NONE')
@@ -65,16 +65,6 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
   const [notesValue, setNotesValue] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
 
-  useEffect(() => {
-    const apply = () => {
-      const h = window.location.hash
-      if (h === '#ventes') setFilter('SOLD')
-      else if (h === '#stock') setFilter('IN_STOCK')
-    }
-    apply()
-    window.addEventListener('hashchange', apply)
-    return () => window.removeEventListener('hashchange', apply)
-  }, [])
 
   const brands = useMemo(() => ['ALL', ...Array.from(new Set(purchases.map(p => p.brand))).sort()], [purchases])
   const sizes = useMemo(() => ['ALL', ...Array.from(new Set(purchases.map(p => p.size))).sort()], [purchases])
@@ -293,7 +283,7 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
       )}
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base font-semibold tracking-tight text-ink">Stock</h2>
+        <h2 className="text-base font-semibold tracking-tight text-ink">{title}</h2>
         <div className="flex flex-wrap items-center gap-2">
           <select value={filter} onChange={e => setFilter(e.target.value)} className={select}>
             <option value="ALL">Toutes ({counts.ALL})</option>
