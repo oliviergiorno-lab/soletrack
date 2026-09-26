@@ -111,9 +111,9 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.9fr_1fr]">
-        <PortfolioChart points={stats.points} title="Évolution du capital investi" />
+        <div id="statistiques" className="min-w-0 scroll-mt-4"><PortfolioChart points={stats.points} title="Évolution du capital investi" /></div>
 
-        <div className="rounded-card border border-line bg-surface p-4 shadow-card md:p-5">
+        <div id="plateformes" className="scroll-mt-4 rounded-card border border-line bg-surface p-4 shadow-card md:p-5">
           <h3 className="mb-4 text-[13px] font-semibold text-ink">Répartition par plateforme</h3>
           {stats.total === 0 ? (
             <p className="text-sm text-muted">Aucune donnée</p>

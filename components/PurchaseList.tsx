@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -64,6 +64,17 @@ export default function PurchaseList({ purchases }: { purchases: Purchase[] }) {
   const [notesId, setNotesId] = useState<number | null>(null)
   const [notesValue, setNotesValue] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+
+  useEffect(() => {
+    const apply = () => {
+      const h = window.location.hash
+      if (h === '#ventes') setFilter('SOLD')
+      else if (h === '#stock') setFilter('IN_STOCK')
+    }
+    apply()
+    window.addEventListener('hashchange', apply)
+    return () => window.removeEventListener('hashchange', apply)
+  }, [])
 
   const brands = useMemo(() => ['ALL', ...Array.from(new Set(purchases.map(p => p.brand))).sort()], [purchases])
   const sizes = useMemo(() => ['ALL', ...Array.from(new Set(purchases.map(p => p.size))).sort()], [purchases])

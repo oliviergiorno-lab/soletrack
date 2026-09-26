@@ -57,9 +57,22 @@ export default async function Home() {
           </div>
         </header>
 
-        <section id="dashboard"><Dashboard purchases={purchases} /></section>
-        <section id="achats"><AddPurchaseForm /></section>
-        <section id="stock"><PurchaseList purchases={purchases} /></section>
+        <section id="dashboard" className="scroll-mt-4"><Dashboard purchases={purchases} /></section>
+        <section id="achats" className="scroll-mt-4"><AddPurchaseForm /></section>
+        <div id="ventes" />
+        <section id="stock" className="scroll-mt-4"><PurchaseList purchases={purchases} /></section>
+
+        <section id="export" className="scroll-mt-4 mb-10">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-card border border-line bg-surface p-5 shadow-card">
+            <div>
+              <h2 className="text-base font-semibold tracking-tight text-ink">Export</h2>
+              <p className="text-[13px] text-muted">Toutes tes paires au format CSV (Excel, Numbers, Google Sheets).</p>
+            </div>
+            <a href="/api/export" className="rounded-xl bg-ink px-4 py-2.5 text-sm font-semibold text-bg hover:bg-ink/90 transition">
+              Télécharger le CSV
+            </a>
+          </div>
+        </section>
       </main>
     </div>
   )
