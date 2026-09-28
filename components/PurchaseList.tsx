@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 
@@ -34,6 +34,8 @@ const input =
 const select =
   'rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink outline-none focus:border-accent cursor-pointer'
 const label = 'text-[11px] font-medium uppercase tracking-wider text-muted'
+const filt =
+  'min-w-0 flex-1 basis-0 truncate rounded-lg border border-line bg-surface px-1.5 py-1.5 text-[11px] text-ink outline-none focus:border-accent cursor-pointer md:px-2.5 md:text-xs'
 const btnPrimary =
   'rounded-xl bg-ink px-4 py-2 text-sm font-semibold text-bg hover:bg-ink/90 disabled:opacity-50 transition'
 const btnGhost = 'px-3 py-2 text-sm text-muted hover:text-ink transition'
@@ -64,6 +66,9 @@ export default function PurchaseList({ purchases, initialFilter = 'ALL', title =
   const [notesId, setNotesId] = useState<number | null>(null)
   const [notesValue, setNotesValue] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
+  const [deltaMode, setDeltaMode] = useState<'eur' | 'pct'>('eur')
+  useEffect(() => { try { const v = localStorage.getItem('st-delta'); if (v === 'pct' || v === 'eur') setDeltaMode(v) } catch {} }, [])
+  function toggleDelta() { const v = deltaMode === 'eur' ? 'pct' : 'eur'; setDeltaMode(v); try { localStorage.setItem('st-delta', v) } catch {} }
 
 
   const brands = useMemo(() => ['ALL', ...Array.from(new Set(purchases.map(p => p.brand))).sort()], [purchases])
@@ -186,7 +191,7 @@ export default function PurchaseList({ purchases, initialFilter = 'ALL', title =
       <div className={`tabular ${align === 'right' ? 'text-right' : ''}`}>
         <div className="text-sm font-semibold text-ink">{eur(p.marketPrice)}</div>
         {d !== null && (
-          <div className={`text-xs font-semibold ${d >= 0 ? 'text-accent-ink' : 'text-neg'}`}>{pct(d)}</div>
+          <div className={`text-xs font-semibold ${d >= 0 ? 'text-accent-ink' : 'text-neg'}`}>{deltaMode === 'pct' ? pct(d) : (d >= 0 ? '+' : '−') + eur(Math.abs(p.marketPrice - p.totalCost))}</div>
         )}
       </div>
     )
@@ -282,29 +287,33 @@ export default function PurchaseList({ purchases, initialFilter = 'ALL', title =
         </div>
       )}
 
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <h2 className="text-base font-semibold tracking-tight text-ink">{title}</h2>
-        <div className="flex flex-wrap items-center gap-2">
-          <select value={filter} onChange={e => setFilter(e.target.value)} className={select}>
-            <option value="ALL">Toutes ({counts.ALL})</option>
-            <option value="IN_STOCK">En stock ({counts.IN_STOCK})</option>
-            <option value="SOLD">Vendues ({counts.SOLD})</option>
-            <option value="RETURNED">Retournées ({counts.RETURNED})</option>
+        <div className="flex w-full items-center gap-1 md:w-auto md:gap-1.5">
+          <select value={filter} onChange={e => setFilter(e.target.value)} className={filt}>
+            <option value="ALL">Tout · {counts.ALL}</option>
+            <option value="IN_STOCK">Stock · {counts.IN_STOCK}</option>
+            <option value="SOLD">Vendu · {counts.SOLD}</option>
+            <option value="RETURNED">Retour · {counts.RETURNED}</option>
           </select>
-          <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)} className={select}>
-            {brands.map(b => <option key={b} value={b}>{b === 'ALL' ? 'Toutes marques' : b}</option>)}
+          <select value={filterBrand} onChange={e => setFilterBrand(e.target.value)} className={filt}>
+            {brands.map(b => <option key={b} value={b}>{b === 'ALL' ? 'Marque' : b}</option>)}
           </select>
-          <select value={filterSize} onChange={e => setFilterSize(e.target.value)} className={select}>
-            {sizes.map(s => <option key={s} value={s}>{s === 'ALL' ? 'Toutes tailles' : s}</option>)}
+          <select value={filterSize} onChange={e => setFilterSize(e.target.value)} className={filt}>
+            {sizes.map(s => <option key={s} value={s}>{s === 'ALL' ? 'Taille' : s}</option>)}
           </select>
-          <select value={sortPrice} onChange={e => setSortPrice(e.target.value)} className={select}>
-            <option value="NONE">Prix : défaut</option>
-            <option value="ASC">Prix : croissant</option>
-            <option value="DESC">Prix : décroissant</option>
+          <select value={sortPrice} onChange={e => setSortPrice(e.target.value)} className={filt}>
+            <option value="NONE">Tri</option>
+            <option value="ASC">Prix ↑</option>
+            <option value="DESC">Prix ↓</option>
           </select>
+          <div className="flex shrink-0 overflow-hidden rounded-lg border border-line text-[11px] md:text-xs" role="group" aria-label="Variation en euros ou en pourcentage">
+            <button type="button" onClick={() => deltaMode !== 'eur' && toggleDelta()} className={`px-2 py-1.5 font-semibold transition md:px-2.5 ${deltaMode === 'eur' ? 'bg-ink text-bg' : 'bg-surface text-muted hover:text-ink'}`}>€</button>
+            <button type="button" onClick={() => deltaMode !== 'pct' && toggleDelta()} className={`px-2 py-1.5 font-semibold transition md:px-2.5 ${deltaMode === 'pct' ? 'bg-ink text-bg' : 'bg-surface text-muted hover:text-ink'}`}>%</button>
+          </div>
           {(filterBrand !== 'ALL' || filterSize !== 'ALL' || sortPrice !== 'NONE') && (
-            <button onClick={() => { setFilterBrand('ALL'); setFilterSize('ALL'); setSortPrice('NONE') }} className="text-xs text-muted hover:text-ink">
-              Réinitialiser
+            <button onClick={() => { setFilterBrand('ALL'); setFilterSize('ALL'); setSortPrice('NONE') }} className="shrink-0 text-[11px] text-muted hover:text-ink md:text-xs" title="Réinitialiser les filtres">
+              ✕
             </button>
           )}
         </div>
