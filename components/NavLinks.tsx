@@ -12,11 +12,11 @@ const NAV = [
   { href: '#export', label: 'Export', d: 'M12 15V3M8 7l4-4 4 4M4 15v4a2 2 0 002 2h12a2 2 0 002-2v-4' },
 ]
 
-const BASE = 'flex shrink-0 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium transition-colors'
+const BASE = 'relative flex shrink-0 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-[13.5px] font-medium transition-colors'
 const ON = 'bg-white/[0.08] text-white'
 const OFF = 'text-[#B4B0A8] hover:bg-white/[0.05] hover:text-white'
 
-export default function NavLinks() {
+export default function NavLinks({ alerts = 0 }: { alerts?: number }) {
   const [active, setActive] = useState('#dashboard')
 
   useEffect(() => {
@@ -32,6 +32,11 @@ export default function NavLinks() {
         <a key={item.href} href={item.href} className={`${BASE} ${active === item.href ? ON : OFF}`} aria-label={item.label}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={item.d} /></svg>
           <span className="hidden md:inline">{item.label}</span>
+          {item.href === '#stock' && alerts > 0 && (
+            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-neg px-1 text-[9px] font-bold leading-none text-white ring-2 ring-side md:static md:ml-auto md:ring-0" aria-label={`${alerts} paire(s) à vendre`}>
+              {alerts}
+            </span>
+          )}
         </a>
       ))}
     </nav>

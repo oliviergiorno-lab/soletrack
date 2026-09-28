@@ -2,7 +2,7 @@ import LogoutButton from './LogoutButton'
 import SoleTrackMark from './brand/SoleTrackMark'
 import NavLinks from './NavLinks'
 
-export default function Sidebar({ username }: { username: string }) {
+export default function Sidebar({ username, alerts = 0 }: { username: string; alerts?: number }) {
   const initials = username.slice(0, 2).toUpperCase()
 
   return (
@@ -18,7 +18,7 @@ export default function Sidebar({ username }: { username: string }) {
         </div>
       </div>
 
-      <NavLinks />
+      <NavLinks alerts={alerts} />
 
       <div className="mt-auto hidden items-center gap-2.5 border-t border-white/[0.08] px-2 pt-3 text-[13px] text-[#C9C5BD] md:flex">
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-accent text-[11px] font-bold text-[#0f120e]">{initials}</span>

@@ -32,9 +32,11 @@ export default async function Home() {
     .sort()
     .at(-1) ?? null
 
+  const alerts = purchases.filter(p => p.status === 'IN_STOCK' && p.marketPrice != null && p.marketPrice - p.totalCost >= 1).length
+
   return (
     <div className="min-h-screen bg-bg md:grid md:grid-cols-[212px_1fr]">
-      <Sidebar username={user.username} />
+      <Sidebar username={user.username} alerts={alerts} />
       <AppShell purchases={purchases} lastUpdated={lastUpdated} />
     </div>
   )

@@ -8,6 +8,7 @@ type Purchase = {
   brand: string
   model: string
   colorway: string
+  size: string
   platform: string
   buyPrice: number
   fees: number
@@ -28,7 +29,7 @@ function signed(n: number) {
   return (n >= 0 ? '+' : '−') + eur(Math.abs(n))
 }
 function pct(n: number) {
-  return (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1).replace('.', ',') + ' %'
+  return (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1).replace('.', ',') + '%'
 }
 
 export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
@@ -68,7 +69,12 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
     })
     if (points.length) points.push({ date: new Date().toISOString(), value: cum })
 
-    return { inStock, sold, capitalInvesti, pnlRealise, platforms, total, points, quoted, valeurMarche, latente, latentePct }
+    const opps = quoted
+      .map(p => ({ ...p, gain: (p.marketPrice as number) - p.totalCost }))
+      .filter(p => p.gain >= 1)
+      .sort((a, b) => b.gain - a.gain)
+
+    return { inStock, sold, capitalInvesti, pnlRealise, platforms, total, points, quoted, valeurMarche, latente, latentePct, opps }
   }, [purchases])
 
   let acc = 0
@@ -87,7 +93,7 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
   const kpis = [
     { label: 'Capital investi', value: eur(stats.capitalInvesti), sub: `${stats.inStock.length} paire${stats.inStock.length > 1 ? 's' : ''} en stock`, tone: 'text-ink', badge: null as string | null },
     { label: 'Valeur de marché', value: hasQuotes ? eur(stats.valeurMarche) : '—', sub: hasQuotes ? coverage : 'Aucune cote pour le moment', tone: hasQuotes ? 'text-ink' : 'text-muted', badge: null },
-    { label: 'Plus-value latente', value: hasQuotes ? signed(stats.latente) : '—', sub: hasQuotes ? coverage : 'Aucune cote pour le moment', tone: hasQuotes ? (stats.latente >= 0 ? 'text-accent-ink' : 'text-neg') : 'text-muted', badge: hasQuotes ? pct(stats.latentePct) : null },
+    { label: 'P&L latent', value: hasQuotes ? signed(stats.latente) : '—', sub: hasQuotes ? coverage : 'Aucune cote pour le moment', tone: hasQuotes ? (stats.latente >= 0 ? 'text-accent-ink' : 'text-neg') : 'text-muted', badge: hasQuotes ? pct(stats.latentePct) : null },
     { label: 'P&L réalisé', value: signed(stats.pnlRealise), sub: `${stats.sold.length} paire${stats.sold.length > 1 ? 's' : ''} vendue${stats.sold.length > 1 ? 's' : ''}`, tone: stats.pnlRealise >= 0 ? 'text-accent-ink' : 'text-neg', badge: null },
   ]
 
@@ -96,10 +102,10 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {kpis.map(k => (
           <div key={k.label} className="rounded-xl border border-line bg-surface p-4 shadow-card">
-            <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="mb-2 flex items-start justify-between gap-2">
               <span className="text-[11px] font-medium uppercase tracking-wider text-muted">{k.label}</span>
               {k.badge && (
-                <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold tabular ${stats.latente >= 0 ? 'bg-accent-soft text-accent-ink' : 'bg-neg/10 text-neg'}`}>
+                <span className={`shrink-0 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold tabular ${stats.latente >= 0 ? 'bg-accent-soft text-accent-ink' : 'bg-neg/10 text-neg'}`}>
                   {k.badge}
                 </span>
               )}
@@ -108,6 +114,32 @@ export default function Dashboard({ purchases }: { purchases: Purchase[] }) {
             <div className="mt-1 text-xs text-muted">{k.sub}</div>
           </div>
         ))}
+      </div>
+
+      <div className="rounded-card border border-line bg-surface p-4 shadow-card md:p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="text-[13px] font-semibold text-ink">Opportunités de vente</h3>
+          <span className="text-xs text-muted">cote &gt; prix d'achat</span>
+        </div>
+        {stats.opps.length === 0 ? (
+          <p className="text-sm text-muted">Aucune paire au-dessus de son prix d'achat pour le moment.</p>
+        ) : (
+          <div className="flex flex-col divide-y divide-line">
+            {stats.opps.map(p => (
+              <div key={p.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                <span className="h-2 w-2 flex-shrink-0 rounded-full bg-accent" />
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-medium text-ink">{p.brand} {p.model}</div>
+                  <div className="truncate text-xs text-muted">{p.colorway} · {p.size}</div>
+                </div>
+                <div className="text-right tabular">
+                  <div className="text-sm font-semibold text-ink">{eur(p.marketPrice as number)}</div>
+                  <div className="text-xs font-semibold text-accent-ink">+{eur(p.gain)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.9fr_1fr]">

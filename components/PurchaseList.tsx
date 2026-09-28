@@ -80,6 +80,10 @@ export default function PurchaseList({ purchases, initialFilter = 'ALL', title =
     if (filterSize !== 'ALL') r = r.filter(p => p.size === filterSize)
     if (sortPrice === 'ASC') r = [...r].sort((a, b) => a.totalCost - b.totalCost)
     if (sortPrice === 'DESC') r = [...r].sort((a, b) => b.totalCost - a.totalCost)
+    // Opportunités de vente en tête (cote > coût d'achat), triées par gain décroissant
+    const gain = (p: Purchase) => (p.status === 'IN_STOCK' && p.marketPrice != null ? p.marketPrice - p.totalCost : -Infinity)
+    const hot = r.filter(p => gain(p) >= 1).sort((a, b) => gain(b) - gain(a))
+    if (hot.length) r = [...hot, ...r.filter(p => gain(p) < 1)]
     return r
   }, [purchases, filter, filterBrand, filterSize, sortPrice])
 
@@ -187,8 +191,10 @@ export default function PurchaseList({ purchases, initialFilter = 'ALL', title =
   const Quote = ({ p, align }: { p: Purchase; align: 'left' | 'right' }) => {
     const d = delta(p)
     if (p.status !== 'IN_STOCK' || p.marketPrice == null) return <span className="text-xs text-muted">—</span>
+    const sell = p.marketPrice - p.totalCost >= 1
     return (
       <div className={`tabular ${align === 'right' ? 'text-right' : ''}`}>
+        {sell && <div className={`mb-0.5 inline-block rounded-full bg-accent-soft px-1.5 py-px text-[10px] font-semibold uppercase tracking-wider text-accent-ink ${align === 'right' ? '' : ''}`}>À vendre</div>}
         <div className="text-sm font-semibold text-ink">{eur(p.marketPrice)}</div>
         {d !== null && (
           <div className={`text-xs font-semibold ${d >= 0 ? 'text-accent-ink' : 'text-neg'}`}>{deltaMode === 'pct' ? pct(d) : (d >= 0 ? '+' : '−') + eur(Math.abs(p.marketPrice - p.totalCost))}</div>
