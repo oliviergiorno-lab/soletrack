@@ -29,6 +29,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="fr" className={`${inter.variable} h-full antialiased`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: "try{if(sessionStorage.getItem('st-splash'))document.documentElement.classList.add('no-splash')}catch(e){}" }} />
+      </head>
       <body className="min-h-full flex flex-col bg-bg text-ink">
         <Splash />
         {children}

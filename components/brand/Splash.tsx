@@ -6,12 +6,11 @@ const SHOE = 'M5 72 C5 63 11 59 20 58 L28 57 C36 55 42 44 50 38 C53 35 57 35 59 
 const CURVE = 'M40 67 L52 58 L60 64 L84 34'
 
 export default function Splash() {
-  const [phase, setPhase] = useState<'hidden' | 'show' | 'fade'>('hidden')
+  const [phase, setPhase] = useState<'hidden' | 'show' | 'fade'>('show')
 
   useEffect(() => {
-    if (sessionStorage.getItem('st-splash')) return
+    if (sessionStorage.getItem('st-splash')) { setPhase('hidden'); return }
     sessionStorage.setItem('st-splash', '1')
-    setPhase('show')
     const t1 = setTimeout(() => setPhase('fade'), 2200)
     const t2 = setTimeout(() => setPhase('hidden'), 2700)
     return () => { clearTimeout(t1); clearTimeout(t2) }
@@ -20,7 +19,7 @@ export default function Splash() {
   if (phase === 'hidden') return null
   return (
     <div
-      className={`fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-[#1F2021] transition-opacity duration-500 ${phase === 'fade' ? 'opacity-0' : 'opacity-100'}`}
+      className={`st-splash fixed inset-0 z-[100] flex flex-col items-center justify-center gap-5 bg-[#1F2021] transition-opacity duration-500 ${phase === 'fade' ? 'opacity-0' : 'opacity-100'}`}
       aria-hidden="true"
     >
       <style>{`
