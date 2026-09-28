@@ -68,14 +68,14 @@ async function viaVeilleio(gtin: string, sku: string) {
   const r1 = await fetch(`${base}/search?query=${encodeURIComponent(sku)}&limit=5`, { headers: h, cache: 'no-store' })
   if (!r1.ok) return NextResponse.json({ error: 'upstream', status: r1.status }, { status: 502 })
   const list: any[] = await r1.json()
-  const hit = (Array.isArray(list) ? list : []).find(x => String(x.sku ?? '').toUpperCase() === sku) ?? list?.[0]
+  const hit = (Array.isArray(list) ? list : []).find(x => String(x.sku ?? '').toUpperCase().split('/').map((y: string) => y.trim()).includes(sku)) ?? list?.[0]
   if (!hit?.slug) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   await sleep(1100)
   const r2 = await fetch(`${base}/product?query=${encodeURIComponent(hit.slug)}&currency=EUR&country=FR`, { headers: h, cache: 'no-store' })
   if (!r2.ok) return NextResponse.json({ error: 'upstream', status: r2.status }, { status: 502 })
   const p = await r2.json()
-  if (p?.sku && String(p.sku).toUpperCase() !== sku) return NextResponse.json({ error: 'not_found' }, { status: 404 })
+  if (p?.sku && !String(p.sku).toUpperCase().split('/').map((x: string) => x.trim()).includes(sku)) return NextResponse.json({ error: 'not_found' }, { status: 404 })
 
   const variant = (p?.variants ?? []).find((v: any) => (v.gtins ?? []).some((g: any) => String(g.identifier) === gtin))
   if (!variant) return NextResponse.json({ error: 'gtin_mismatch' }, { status: 409 })
@@ -96,5 +96,12 @@ export async function GET(req: Request) {
   const gtin = (searchParams.get('gtin') || '').replace(/\D/g, '')
   const sku = (searchParams.get('sku') || '').trim().toUpperCase()
   if (gtin.length < 8) return NextResponse.json({ error: 'invalid' }, { status: 400 })
-  return sku ? viaVeilleio(gtin, sku) : viaKicks(gtin)
+  if (!sku) return viaKicks(gtin)
+  const candidates = sku.split('/').map(x => x.trim()).filter(Boolean)
+  let last: Response | null = null
+  for (const c of candidates) {
+    last = await viaVeilleio(gtin, c)
+    if (last.ok || last.status === 409) return last
+  }
+  return last ?? NextResponse.json({ error: 'not_found' }, { status: 404 })
 }

@@ -77,14 +77,14 @@ async function rapidVariants(sku: string): Promise<any[] | null> {
     const r1 = await fetch(`${RAPID}/search?query=${encodeURIComponent(sku)}&limit=5`, { headers: h, cache: 'no-store' })
     if (r1.ok) {
       const list: any[] = await r1.json()
-      const hit = (Array.isArray(list) ? list : []).find(x => String(x.sku ?? '').toUpperCase() === sku) ?? list?.[0]
+      const hit = (Array.isArray(list) ? list : []).find(x => String(x.sku ?? '').toUpperCase().split('/').map((y: string) => y.trim()).includes(sku)) ?? list?.[0]
       if (hit?.slug) {
         await sleep(1100)
         const r2 = await fetch(`${RAPID}/product?query=${encodeURIComponent(hit.slug)}&currency=EUR&country=FR`, { headers: h, cache: 'no-store' })
         if (r2.ok) {
           const p = await r2.json()
           // sécurité : on ne garde que si le SKU correspond
-          if (!p?.sku || String(p.sku).toUpperCase() === sku) out = Array.isArray(p?.variants) ? p.variants : null
+          if (!p?.sku || String(p.sku).toUpperCase().split('/').map((x: string) => x.trim()).includes(sku)) out = Array.isArray(p?.variants) ? p.variants : null
         }
       }
     }
@@ -117,11 +117,16 @@ async function refresh(where: { userId?: number }) {
     const sizeEu = num(p.size)
     if (!sku || sizeEu == null) continue
 
-    let q: Quote = await kicksdb(sku, sizeEu)
-    if (q === 'subscription') { subscription = true; q = null } else if (q) used ??= 'kicksdb'
-    if (!q) { q = await veilleio(sku, sizeEu); if (q && q !== 'subscription') used = used ?? 'veilleio' }
+    let q: Quote = null
+    for (const c of sku.split('/').map(x => x.trim()).filter(Boolean)) {
+      q = await kicksdb(c, sizeEu)
+      if (q === 'subscription') { subscription = true; q = null } else if (q) { used ??= 'kicksdb'; break }
+      q = await veilleio(c, sizeEu)
+      if (q && typeof q === 'object') { used = used ?? 'veilleio'; break }
+      q = null
+    }
 
-    if (q && q !== 'subscription') {
+    if (q && typeof q === 'object') {
       await prisma.purchase.update({ where: { id: p.id }, data: { marketPrice: q.price, marketUpdatedAt: now } })
       updated++
     }
